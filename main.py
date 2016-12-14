@@ -143,9 +143,17 @@ class Economy(object):
                 utility += agent.utility
 
             for key in exchanges.keys():
-                exchanges[key] = exchanges[key] / n_exchange
+                if n_exchange:
+                    exchanges[key] /= n_exchange
+                else:
+                    exchanges[key] = 0
+            for i in range(3):
 
-            third_good_acceptance[:] = third_good_acceptance / proposition_of_third_object
+                if proposition_of_third_object[i] > 0:
+                    third_good_acceptance[i] = third_good_acceptance[i] / proposition_of_third_object[i]
+
+                else:
+                    third_good_acceptance[i] = 0
 
             utility = utility / self.n_agent
 
@@ -170,7 +178,7 @@ def main():
         "t_max": 500,
         "alpha": 0.1,
         "temp": 0.01,
-        "role_repartition": np.array([200, 200, 200]),
+        "role_repartition": np.array([10, 10, 10]),
         "storing_costs": np.array([0.1, 0.2, 0.265]),
         "model": ModelA()
     }
