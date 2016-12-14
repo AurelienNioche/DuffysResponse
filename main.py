@@ -1,4 +1,5 @@
 import numpy as np
+from module.useful_functions import softmax
 
 
 class Player:
