@@ -90,7 +90,7 @@ class Economy(object):
 
         for t in tqdm(range(self.t_max)):
 
-            # containers for future backup
+            # Containers for future backup
             exchanges = {(0, 1): 0, (0, 2): 0, (1, 2): 0}
             n_exchange = 0
             utility = 0
@@ -113,18 +113,18 @@ class Economy(object):
                 j_agreeing = _[j].are_you_satisfied(i_object)
 
                 # Consider particular case of offering third object
-                if _[j].in_hand == _[i].T and _[i].in_hand == _[i].P:
+                if j_object == _[i].T and i_object == _[i].P:
                     proposition_of_third_object[_[i].agent_type] += 1
 
-                if _[i].in_hand == _[j].T and _[j].in_hand == _[j].P:
+                if i_object == _[j].T and j_object == _[j].P:
                     proposition_of_third_object[_[j].agent_type] += 1
 
                 if i_agreeing and j_agreeing:
 
-                    if _[j].in_hand == _[i].T:
+                    if j_object == _[i].T:
                         third_good_acceptance[_[i].agent_type] += 1
 
-                    if _[i].in_hand == _[j].T:
+                    if i_object == _[j].T:
                         third_good_acceptance[_[j].agent_type] += 1
 
                     _[i].in_hand = j_object
@@ -143,7 +143,7 @@ class Economy(object):
                 utility += agent.utility
 
             for key in exchanges.keys():
-                if n_exchange:
+                if n_exchange > 0:
                     exchanges[key] /= n_exchange
                 else:
                     exchanges[key] = 0
@@ -155,7 +155,7 @@ class Economy(object):
                 else:
                     third_good_acceptance[i] = 0
 
-            utility = utility / self.n_agent
+            utility /= self.n_agent
 
             # For back up
             back_up["exchanges"].append(exchanges.copy())
