@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # To Do List
 ## Code
 
