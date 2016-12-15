@@ -11,7 +11,7 @@ if __name__ == "__main__":
     parameters = {
         "t_max": 500,
         "agent_parameters": {"beta": 0.9, "u": 1},
-        "role_repartition": np.array([200, 200, 200]),
+        "role_repartition": np.array([500, 500, 500]),
         "storing_costs": np.array([0.1, 0.25, 0.5]),
         "kw_model": ModelA,
         "agent_model": DuffyAgent,
@@ -22,4 +22,4 @@ if __name__ == "__main__":
             **parameters
         )
 
-    represent_results(backup=backup, parameters=parameters, fig_name=path.expanduser("~/Desktop/KW.pdf"))
+    represent_results(backup=backup, parameters=parameters, fig_name=path.expanduser("~/Desktop/KW_Duffy_Agents.pdf"))
