@@ -7,7 +7,7 @@ class Agent(object):
     Abstract class for agents
     """
 
-    def __init__(self, prod, cons, third, agent_type, idx):
+    def __init__(self, prod, cons, third, agent_type, agent_parameters, storing_costs, kw_model, idx):
 
         # Production object (integer in [0, 1, 2])
         self.P = prod
@@ -24,10 +24,19 @@ class Agent(object):
         # Index of agent (more or less his name ; integer in [0, ..., n] with n : total number of agent)
         self.idx = idx
 
+        # Parameters for agent that could be different in nature depending on the agent model in use (Python dictionary)
+        self.agent_parameters = agent_parameters
+
+        # Storing costs (numpy array of size 3)
+        self.storing_costs = storing_costs
+
+        # Could be Model A or Model B
+        self.kw_model = kw_model
+
         # Keep a trace for time t if the agent consumed or not.
         self.consumption = 0
 
-        # Object an agent
+        # Object an agent has in hand
         self.in_hand = self.P
 
     def are_you_satisfied(self, proposed_object, proportions):

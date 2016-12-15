@@ -4,18 +4,19 @@ from AbstractClasses import Agent
 
 class DuffyAgent(Agent):
 
-    def __init__(self, prod, cons, third, agent_type, idx, storing_costs, beta=0.9, u=1):
+    name = "Duffy"
 
-        super().__init__(prod=prod, cons=cons, third=third, agent_type=agent_type, idx=idx)
+    def __init__(self, **kwargs):
 
-        self.storing_costs = storing_costs
+        super().__init__(**kwargs)
 
+        # Let values[0] be the v_{i+1} and values[1] be v_{i+2}
         self.values = np.zeros(2)
 
         # Let gamma[0] be gamma_{i+1} and gamma[1] be gamma_{i+2}
         self.gamma = np.array([
-            - self.storing_costs[self.P] + beta * u,
-            - self.storing_costs[self.T] + beta * u
+            - self.storing_costs[self.P] + self.agent_parameters["beta"] * self.agent_parameters["u"],
+            - self.storing_costs[self.T] + self.agent_parameters["beta"] * self.agent_parameters["u"]
         ])
 
         self.in_hand_at_the_beginning_of_the_round = self.P
@@ -53,6 +54,3 @@ class DuffyAgent(Agent):
         elif self.in_hand_at_the_beginning_of_the_round == self.T:
 
             self.values[1] += self.consumption * self.gamma[1] - (1-self.consumption) * self.gamma[0]
-
-
-

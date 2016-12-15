@@ -50,16 +50,16 @@ def represent_results(backup, parameters, display=True, fig_name=None):
     ax.set_title("Frequency of acceptance of the third good according to time \n")
     ax.plot(x, [i[0] for i in accept_third_object],
             label="Agent I ({}, {})".format(
-                parameters["model"].roles[0, 0] + 1,
-                parameters["model"].roles[0, 1] + 1), linewidth=2)
+                parameters["kw_model"].roles[0, 0] + 1,
+                parameters["kw_model"].roles[0, 1] + 1), linewidth=2)
     ax.plot(x, [i[1] for i in accept_third_object],
             label="Agent II ({}, {})".format(
-                parameters["model"].roles[1, 0] + 1,
-                parameters["model"].roles[1, 1] + 1), linewidth=2)
+                parameters["kw_model"].roles[1, 0] + 1,
+                parameters["kw_model"].roles[1, 1] + 1), linewidth=2)
     ax.plot(x, [i[2] for i in accept_third_object],
             label="Agent III ({}, {})".format(
-                parameters["model"].roles[2, 0] + 1,
-                parameters["model"].roles[2, 1] + 1), linewidth=2)
+                parameters["kw_model"].roles[2, 0] + 1,
+                parameters["kw_model"].roles[2, 1] + 1), linewidth=2)
     ax.legend()
 
     # Fifth subplot
@@ -84,18 +84,18 @@ def represent_results(backup, parameters, display=True, fig_name=None):
     ax = plt.subplot(n_lines, n_columns, 6)
     ax.set_title("Parameters")
     ax.axis('off')
-    # ax.set_xticks([]), ax.set_yticks([])
+
     msg = \
-        "Model: {}; \n \n" \
+        "KW Model: {}; \n \n" \
+        "Agent model: {}; \n \n" \
+        "Agent parameters: {}; \n \n" \
         "Role repartition: {}; \n \n " \
-        "Learning rate: {}; \n \n" \
-        "Softmax temp: {}; \n \n" \
         "Trials: {}. \n \n" \
         .format(
-            parameters["model"],
+            parameters["kw_model"].name,
+            parameters["agent_model"].name,
+            parameters["agent_parameters"],
             parameters["role_repartition"],
-            parameters["alpha"],
-            parameters["temp"],
             parameters["t_max"]
         )
 

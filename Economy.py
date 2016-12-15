@@ -1,44 +1,17 @@
 import numpy as np
 from tqdm import tqdm
-from os import path
 from RL import RLAgent
-from analysis import represent_results
-
-
-class ModelA(object):
-
-    roles = np.array([
-        [1, 0, 2],
-        [2, 1, 0],
-        [0, 2, 1]
-    ], dtype=int)
-
-    def __str__(self):
-
-        return "Model A"
-
-
-class ModelB(object):
-
-    roles = np.array([
-        [2, 0, 1],
-        [0, 1, 2],
-        [1, 2, 0]
-    ], dtype=int)
-
-    def __str__(self):
-
-        return "Model B"
+from KWModels import ModelA
 
 
 class Economy(object):
 
-    def __init__(self, role_repartition, t_max, alpha, temp, storing_costs, model):
+    def __init__(self, role_repartition, t_max, storing_costs,
+                 agent_parameters=None, agent_model=RLAgent, kw_model=ModelA):
 
         self.t_max = t_max
 
-        self.alpha = alpha
-        self.temp = temp
+        self.agent_parameters = agent_parameters
 
         self.role_repartition = role_repartition
 
@@ -46,7 +19,9 @@ class Economy(object):
 
         self.n_agent = sum(role_repartition)
 
-        self.model = model
+        self.kw_model = kw_model
+
+        self.agent_model = agent_model
 
         self.agents = None
 
@@ -58,16 +33,15 @@ class Economy(object):
 
         for agent_type, n in enumerate(self.role_repartition):
 
-            i, j, k = self.model.roles[agent_type]
+            i, j, k = self.kw_model.roles[agent_type]
 
             for ind in range(n):
-                a = RLAgent(
-                    alpha=self.alpha,
-                    temp=self.temp,
+                a = self.agent_model(
+                    agent_parameters=self.agent_parameters,
                     prod=i, cons=j, third=k,
                     storing_costs=self.storing_costs,
                     agent_type=agent_type,
-                    model=self.model,
+                    kw_model=self.kw_model,
                     idx=agent_idx)
 
                 agents.append(a)
@@ -193,30 +167,3 @@ def launch(**kwargs):
     
     e = Economy(**kwargs)
     return e.play()
-
-
-def main():
-
-    parameters = {
-        "t_max": 500,
-        "alpha": 0.1,
-        "temp": 0.01,
-        "role_repartition": np.array([500, 500, 500]),
-        "storing_costs": np.array([0.1, 0.25, 0.265]),
-        "model": ModelA()
-    }
-
-    backup = \
-        launch(
-            t_max=parameters["t_max"], alpha=parameters["alpha"], temp=parameters["temp"],
-            role_repartition=parameters["role_repartition"],
-            storing_costs=parameters["storing_costs"],
-            model=parameters["model"]
-        )
-
-    represent_results(backup=backup, parameters=parameters, fig_name=path.expanduser("~/Desktop/KW.pdf"))
-
-
-if __name__ == "__main__":
-
-    main()

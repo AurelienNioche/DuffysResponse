@@ -5,34 +5,38 @@ from module.useful_functions import softmax
 
 class RLAgent(Agent):
 
-    def __init__(self, prod, cons, third, agent_type, idx, alpha, temp, storing_costs, model):
+    name = "RL"
 
-        super().__init__(prod=prod, cons=cons, third=third, agent_type=agent_type, idx=idx)
+    def __init__(self, **kwargs):
 
-        self.model = model
-
-        self.storing_costs = storing_costs
+        super().__init__(**kwargs)
 
         # ------- STRATEGIES ------- #
 
         # Dimension 0: strategies,
-        # Dimension 1: object in hand (i, k),
-        # Dimension 2: proposed object (i, j, k),
+        # Dimension 1: object in hand with relative idx (0: production good, 1: consumption good, 2: third good),
+        # Dimension 2: proposed object with relative idx (0: production good, 1: consumption good, 2: third good),
         # We suppose that :
+        # - An agent can never has his consumption good in hand
+        #                   -> he directly consumes it (that is why we have 'nan' for Not A Number)
         # - An agent always accepts his consumption good
         # - An agent always refuse the exchange if the proposed object is the same that the one he has in hand
         # - Strategies therefore contrast by attitude of the agent towards the third good if he has his production
         #    good in hand, and the production good if he has his third good in hand
         self.strategies = np.array([
+            # Strategy '0'
             [[0, 1, 0],
              [np.nan, np.nan, np.nan],
              [0, 1, 0]],
+            # Strategy '1'
             [[0, 1, 1],
              [np.nan, np.nan, np.nan],
              [0, 1, 0]],
+            # Strategy '2'
             [[0, 1, 0],
              [np.nan, np.nan, np.nan],
              [1, 1, 0]],
+            # Strategy '3'
             [[0, 1, 1],
              [np.nan, np.nan, np.nan],
              [1, 1, 0]],
@@ -47,31 +51,31 @@ class RLAgent(Agent):
 
         absolute_to_relative_3_types = np.array([
             [
-                np.where(self.model.roles[0] == 0)[0][0],
-                np.where(self.model.roles[0] == 1)[0][0],
-                np.where(self.model.roles[0] == 2)[0][0]
+                np.where(self.kw_model.roles[0] == 0)[0][0],
+                np.where(self.kw_model.roles[0] == 1)[0][0],
+                np.where(self.kw_model.roles[0] == 2)[0][0]
             ],
             [
-                np.where(self.model.roles[1] == 0)[0][0],
-                np.where(self.model.roles[1] == 1)[0][0],
-                np.where(self.model.roles[1] == 2)[0][0]
+                np.where(self.kw_model.roles[1] == 0)[0][0],
+                np.where(self.kw_model.roles[1] == 1)[0][0],
+                np.where(self.kw_model.roles[1] == 2)[0][0]
             ],
             [
-                np.where(self.model.roles[2] == 0)[0][0],
-                np.where(self.model.roles[2] == 1)[0][0],
-                np.where(self.model.roles[2] == 2)[0][0]
+                np.where(self.kw_model.roles[2] == 0)[0][0],
+                np.where(self.kw_model.roles[2] == 1)[0][0],
+                np.where(self.kw_model.roles[2] == 2)[0][0]
             ]
         ], dtype=int)
 
         # Take object with absolute reference to give object relating to agent
         #    (with 0: production good, 1: consumption good, 2: third object)
 
-        self.absolute_to_relative = absolute_to_relative_3_types[agent_type]
+        self.absolute_to_relative = absolute_to_relative_3_types[self.type]
 
         # ----- RL PARAMETERS ---- #
 
-        self.alpha = alpha
-        self.temp = temp
+        self.alpha = self.agent_parameters["alpha"]
+        self.temp = self.agent_parameters["temp"]
 
     # ------------------------ SURCHARGED METHODS ------------------------------------------------------ #
 

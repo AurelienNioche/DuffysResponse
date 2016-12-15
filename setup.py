@@ -6,5 +6,5 @@ extensions = [
     Extension('module.useful_functions', ['module/useful_functions.pyx'], include_dirs=[np.get_include()]),
 ]
 setup(
-    ext_modules=cythonize(extensions), install_requires=['numpy', 'Cython']
+    ext_modules=cythonize(extensions), install_requires=['numpy', 'Cython', 'tqdm']
 )
