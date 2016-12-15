@@ -6,7 +6,7 @@ def represent_results(backup, parameters, display=True, fig_name=None):
     from pylab import plt
 
     exchanges_list = backup["exchanges"]
-    mean_utility_list = backup["utility"]
+    mean_utility_list = backup["consumption"]
     n_exchanges_list = backup["n_exchanges"]
     accept_third_object = backup["third_good_acceptance"]
 
@@ -37,7 +37,7 @@ def represent_results(backup, parameters, display=True, fig_name=None):
     # Second subplot
 
     ax = plt.subplot(n_lines, n_columns, 2)
-    ax.set_title("Utility average according to time \n")
+    ax.set_title("Consumption average according to time \n")
     ax.plot(x, mean_utility_list, linewidth=2)
 
     # Third subplot

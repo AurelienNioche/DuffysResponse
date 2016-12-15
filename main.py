@@ -1,7 +1,7 @@
 import numpy as np
 from tqdm import tqdm
 from os import path
-from RL import Agent
+from RL import RLAgent
 from analysis import represent_results
 
 
@@ -61,7 +61,7 @@ class Economy(object):
             i, j, k = self.model.roles[agent_type]
 
             for ind in range(n):
-                a = Agent(
+                a = RLAgent(
                     alpha=self.alpha,
                     temp=self.temp,
                     prod=i, cons=j, third=k,
@@ -84,7 +84,7 @@ class Economy(object):
         back_up = {
             "exchanges": [],
             "n_exchanges": [],
-            "utility": [],
+            "consumption": [],
             "third_good_acceptance": []
         }
 
@@ -93,13 +93,22 @@ class Economy(object):
             # Containers for future backup
             exchanges = {(0, 1): 0, (0, 2): 0, (1, 2): 0}
             n_exchange = 0
-            utility = 0
+            consumption = 0
             third_good_acceptance = np.zeros(3)
             proposition_of_third_object = np.zeros(3)
 
-            for agent in self.agents:
-                agent.select_strategy()
+            # ----- COMPUTE PROPORTIONS ----- #
+            # Container for proportions of agents having this or that in hand according to their type
+            #  - rows: type of agent
+            # - columns: type of good
 
+            proportions = np.zeros((3, 3))
+            for i in self.agents:
+
+                proportions[i.type, i.in_hand] += 1
+            # --------------------------------- #
+
+            # ---------- MANAGE EXCHANGES ----- #
             # Take a random order among the indexes of the agents.
             agent_pairs = np.random.choice(self.n_agent, size=(self.n_agent // 2, 2), replace=False)
 
@@ -109,59 +118,73 @@ class Economy(object):
                 j_object = _[j].in_hand
 
                 # Each agent is "initiator' of an exchange during one period.
-                i_agreeing = _[i].are_you_satisfied(j_object)
-                j_agreeing = _[j].are_you_satisfied(i_object)
+                i_agreeing = _[i].are_you_satisfied(j_object, proportions)
+                j_agreeing = _[j].are_you_satisfied(i_object, proportions)
 
+                # ---- STATS ------ #
                 # Consider particular case of offering third object
                 if j_object == _[i].T and i_object == _[i].P:
-                    proposition_of_third_object[_[i].agent_type] += 1
+                    proposition_of_third_object[_[i].type] += 1
 
                 if i_object == _[j].T and j_object == _[j].P:
-                    proposition_of_third_object[_[j].agent_type] += 1
+                    proposition_of_third_object[_[j].type] += 1
+                # ------------ #
 
+                # If both agents agree to exchange...
                 if i_agreeing and j_agreeing:
 
+                    # ---- STATS ------ #
+                    # Consider particular case of offering third object
                     if j_object == _[i].T:
-                        third_good_acceptance[_[i].agent_type] += 1
+                        third_good_acceptance[_[i].type] += 1
 
                     if i_object == _[j].T:
-                        third_good_acceptance[_[j].agent_type] += 1
+                        third_good_acceptance[_[j].type] += 1
+                    # ------------ #
 
+                    # ...exchange occurs
                     _[i].in_hand = j_object
                     _[j].in_hand = i_object
 
+                    # ---- STATS ------ #
                     exchange_type = tuple(sorted([i_object, j_object]))
                     exchanges[exchange_type] += 1
                     n_exchange += 1
+                    # ----------- #
 
-            # Each agent consumes at the end of each round and adapt his behavior.
+            # Each agent consumes at the end of each round and adapt his behavior (or not).
             for agent in self.agents:
+                
                 agent.consume()
-                agent.learn()
 
                 # Keep a trace from utilities
-                utility += agent.utility
+                consumption += agent.consumption
 
+            # ----- FOR FUTURE BACKUP ----- #
             for key in exchanges.keys():
+                # Avoid division by zero
                 if n_exchange > 0:
                     exchanges[key] /= n_exchange
                 else:
                     exchanges[key] = 0
-            for i in range(3):
 
+            for i in range(3):
+                # Avoid division by zero
                 if proposition_of_third_object[i] > 0:
                     third_good_acceptance[i] = third_good_acceptance[i] / proposition_of_third_object[i]
 
                 else:
                     third_good_acceptance[i] = 0
 
-            utility /= self.n_agent
+            consumption /= self.n_agent
 
             # For back up
             back_up["exchanges"].append(exchanges.copy())
-            back_up["utility"].append(utility)
+            back_up["consumption"].append(consumption)
             back_up["n_exchanges"].append(n_exchange)
             back_up["third_good_acceptance"].append(third_good_acceptance.copy())
+
+            # ----------------------------- #
 
         return back_up
 
@@ -178,8 +201,8 @@ def main():
         "t_max": 500,
         "alpha": 0.1,
         "temp": 0.01,
-        "role_repartition": np.array([10, 10, 10]),
-        "storing_costs": np.array([0.1, 0.2, 0.265]),
+        "role_repartition": np.array([500, 500, 500]),
+        "storing_costs": np.array([0.1, 0.25, 0.265]),
         "model": ModelA()
     }
 
