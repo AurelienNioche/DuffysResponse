@@ -39,7 +39,7 @@ class Agent(object):
         # Object an agent has in hand
         self.in_hand = self.P
 
-    def are_you_satisfied(self, proposed_object, proportions):
+    def are_you_satisfied(self, proposed_object, type_of_other_agent, proportions):
 
         return np.random.choice([True, False])
 

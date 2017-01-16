@@ -21,7 +21,7 @@ class DuffyAgent(Agent):
 
         self.in_hand_at_the_beginning_of_the_round = self.P
 
-    def are_you_satisfied(self, proposed_object, proportions):
+    def are_you_satisfied(self, proposed_object, type_of_other_agent, proportions):
 
         self.in_hand_at_the_beginning_of_the_round = self.in_hand
 

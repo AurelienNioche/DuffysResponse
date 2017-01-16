@@ -79,7 +79,7 @@ class RLAgent(Agent):
 
     # ------------------------ SURCHARGED METHODS ------------------------------------------------------ #
 
-    def are_you_satisfied(self, proposed_object, propositions):
+    def are_you_satisfied(self, proposed_object, type_of_other_agent, propositions):
 
         self.select_strategy()
         agreeing = self.strategies[self.followed_strategy, 

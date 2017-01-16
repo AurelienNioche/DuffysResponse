@@ -80,6 +80,9 @@ class Economy(object):
             for i in self.agents:
 
                 proportions[i.type, i.in_hand] += 1
+
+            proportions[:] = proportions / self.n_agent
+
             # --------------------------------- #
 
             # ---------- MANAGE EXCHANGES ----- #
@@ -92,8 +95,8 @@ class Economy(object):
                 j_object = _[j].in_hand
 
                 # Each agent is "initiator' of an exchange during one period.
-                i_agreeing = _[i].are_you_satisfied(j_object, proportions)
-                j_agreeing = _[j].are_you_satisfied(i_object, proportions)
+                i_agreeing = _[i].are_you_satisfied(j_object, j.type, proportions)
+                j_agreeing = _[j].are_you_satisfied(i_object, i.type, proportions)
 
                 # ---- STATS ------ #
                 # Consider particular case of offering third object
