@@ -95,8 +95,8 @@ class Economy(object):
                 j_object = _[j].in_hand
 
                 # Each agent is "initiator' of an exchange during one period.
-                i_agreeing = _[i].are_you_satisfied(j_object, j.type, proportions)
-                j_agreeing = _[j].are_you_satisfied(i_object, i.type, proportions)
+                i_agreeing = _[i].are_you_satisfied(j_object, _[j].type, proportions)
+                j_agreeing = _[j].are_you_satisfied(i_object, _[i].type, proportions)
 
                 # ---- STATS ------ #
                 # Consider particular case of offering third object
