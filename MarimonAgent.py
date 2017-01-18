@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import product
 from AbstractClasses import Agent
 
 
@@ -8,95 +9,136 @@ class MarimonAgent(Agent):
 
         super().__init__(**kwargs)
 
-        self.exchange_classifier_system = ExchangeClassifierSystem()
-        self.consumption_classifier_system = ConsumptionClassifierSystem()
+        self.exchange_classifier_system = ExchangeClassifierSystem(
+            b11=self.agent_parameters["b11"],
+            b12=self.agent_parameters["b12"],
+            initial_strength=self.agent_parameters["initial_strength"])
+        self.consumption_classifier_system = ConsumptionClassifierSystem(
+            b21=self.agent_parameters["b21"],
+            b22=self.agent_parameters["b22"],
+            initial_strength=self.agent_parameters["initial_strength"])
 
         self.previous_object_in_hand = self.P
+        self.previous_utility = 0
 
-        self.utility_derived_from_consumption = 3
+        self.utility_derived_from_consumption = self.agent_parameters["u"]
+
+        self.best_exchange_classifier = None
+        self.best_consumption_classifier = None
+
+        self.prepare_classifiers()
+
+    def prepare_classifiers(self):
+
+        self.exchange_classifier_system.prepare_classifiers()
+        self.consumption_classifier_system.prepare_classifiers()
 
     def are_you_satisfied(self, proposed_object, type_of_other_agent, proportions):
 
         # Choose the right classifier
+
+        # Equation 5
         m_index = self.exchange_classifier_system.get_potential_bidders(self.in_hand, proposed_object)
-        best_classifier = self.exchange_classifier_system.get_best_classifier(m_index)
+
+        # Equation 6
+        self.best_exchange_classifier = self.exchange_classifier_system.get_best_classifier(m_index)
 
         # Look at the decision
-        exchange_decision = bool(best_classifier.decision)
+
+        # Equation 1
+        exchange_decision = bool(self.best_exchange_classifier.decision)
 
         return exchange_decision
 
     def consume(self):
 
-        # Re-initialize
-
         # Choose the right classifier
+
+        # Is there a winning exchange classifier?
+        is_winning_exchange_classifier = \
+            self.best_exchange_classifier.decision = 0 \
+            or self.previous_object_in_hand != self.in_hand
+
+        # Update strength of previous selected classifier
+        if self.best_consumption_classifier:
+
+            self.best_consumption_classifier.update_strength(
+                previous_utility=self.utility_derived_from_consumption*self.consumption,
+                best_exchange_classifier=self.best_exchange_classifier,
+                is_winning_exchange_classifier=is_winning_exchange_classifier
+            )
+
+        # ------------- #
+
+        # Re-initialize
+        self.consumption = 0
+
+        # Equation 7
         m_index = self.consumption_classifier_system.get_potential_bidders(self.in_hand)
-        best_consumption_classifier = self.consumption_classifier_system.get_best_classifier(m_index)
+
+        # Equation 8
+        self.best_consumption_classifier = self.consumption_classifier_system.get_best_classifier(m_index)
 
         # Update theta counters
-        # Equation 9
-        if not self.exchange_classifier_system.get_decision() and \
-                not self.previous_object_in_hand != self.in_hand:
-            self.exchange_classifier_system.update_counter_of_winner_classifier()
-            indicated_exchange_classifier = \
-                self.exchange_classifier_system.get_selected_classifier()
-        else:
-            indicated_exchange_classifier = None
+        if is_winning_exchange_classifier:
+            self.best_exchange_classifier.update_theta_counter()
 
-        self.consumption_classifier_system.update_counter_of_winner_classifier()
+        self.best_consumption_classifier.update_theta_counter()
 
-        # This is the strange part: agent choose if he consumes or not
-        consumption_decision = best_consumption_classifier.decision
+        # Update strength of best exchange classifier
+        self.best_exchange_classifier.update_strength(self.best_consumption_classifier)
 
         # If he decides to consume...
-        if consumption_decision:
+        # Equation 3 & 4
+        if self.best_consumption_classifier.decision:
 
             # And the agent has his consumption good
             if self.in_hand == self.C:
-
                 self.consumption = 1
 
             # If he decided to consume, he produce a new unity of his production good
             self.in_hand = self.P
 
-        # Keep a trace of the previous object in hand for updating the exchange theta counter
+        # Keep a trace of the previous object in hand
         self.previous_object_in_hand = self.in_hand
+        self.previous_utility = self.consumption * self.utility_derived_from_consumption
 
-        # Make the payments
-        self.consumption_classifier_system.make_payments(
-            utility_derived_from_consumption=self.consumption*self.utility_derived_from_consumption,
-            indicated_exchange_classifier=indicated_exchange_classifier
+# --------------------------------------------------------------------------------------------------- #
+# -------------------------------- CLASSIFIER SYSTEM ------------------------------------------------ #
+# --------------------------------------------------------------------------------------------------- #
 
-        )
-
-
-# ---------------------------------- ABSTRACT CLASSES ---------------------------------------------------------- #
 
 class ClassifierSystem(object):
 
     def __init__(self):
 
         self.collection_of_classifiers = list()
-        self.selected_classifier_index = None
-        self.previous_selected_classifier_index = None
 
-        # To convert good described as int into ternary
-        self.int_to_ternary = {0: np.array([1, 0, 0]), 1: np.array([0, 1, 0]), 2: np.array([0, 0, 1])}
+        # Encoding of goods
+        self.encoding_of_goods = np.array(
+            [
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, 1],
+                [0, -1, -1],
+                [-1, 0, -1],
+                [-1, -1, 0]
+            ], dtype=int
+        )
 
     def get_best_classifier(self, m_index):
-        
-        # Keep a trace of the previous selected classifier
-        self.previous_selected_classifier_index = self.selected_classifier_index
 
         s = np.asarray([self.collection_of_classifiers[i].strength for i in m_index])
-        best_c_index = np.random.choice(np.where(s == max(s)))
 
-        self.selected_classifier_index = m_index[best_c_index]
+        best_c_index = np.random.choice(np.where(s == max(s))[0])
 
-        return self.collection_of_classifiers[self.selected_classifier_index]
+        best_classifier_idx = m_index[best_c_index]
 
-    def compare_classifier_triad_with_int(self, classifier_triad, int_to_compare_with):
+        return self.collection_of_classifiers[best_classifier_idx]
+
+    @staticmethod
+    def compare_classifier_triad_with_int(classifier_triad, good_encoded_in_int):
+
         # Code: Meaning
         # 100: good1 (-> 0)
         # 010: good2 (-> 1)
@@ -105,72 +147,79 @@ class ClassifierSystem(object):
         # #0#: not good2 (-> 1)
         # ##0: not good3 (-> 2)
 
-        tern_good = self.int_to_ternary[int_to_compare_with]
-        return classifier_triad == tern_good or \
-            np.in1d(np.where(classifier_triad == 0)[0], np.where(tern_good == 0)[0]).all()
-
-    def get_selected_classifier(self):
-        return self.collection_of_classifiers[self.selected_classifier_index]
-
-
-# -------------------------------------------------------------------------------------------------------------- #
+        return classifier_triad[good_encoded_in_int] != 0
 
 
 class ExchangeClassifierSystem(ClassifierSystem):
 
-    def __init__(self):
+    def __init__(self, b11, b12, initial_strength):
 
         super().__init__()
-        self.b_11 = np.random.random() / 2
-        self.b_12 = np.random.random() / 2
 
-    def get_potential_bidders(self, own_storage, other_storage):
+        self.b11 = b11
+        self.b12 = b12
+        self.initial_strength = initial_strength
 
-        # INPUT
-        # z_{a, t} = (x_{a, t}, x_{rho_t, (a) t})
+    def prepare_classifiers(self):
 
-        # For a given state or "condition" Zat = (XoI., xp,(o),),
-        # there will typically be a collection of classifiers within the classifier system
-        # whose condition are satisfied
+        for i, j in product(self.encoding_of_goods, repeat=2):
+
+            for k in [0, 1]:
+
+                self.collection_of_classifiers.append(
+                    ExchangeClassifier(
+                        own_storage=i,
+                        partner_storage=j,
+                        decision=k,
+                        strength=self.initial_strength,
+                        b11=self.b11,
+                        b12=self.b12
+                    )
+                )
+
+    def get_potential_bidders(self, own_storage, partner_storage):
 
         # List of indexes of classifiers that match the current situation
         match_index = []
         for i, c in enumerate(self.collection_of_classifiers):
 
-            if self.test_compatibility(c, own_storage, other_storage):
+            if self.test_compatibility(c, own_storage, partner_storage):
                 match_index.append(i)
-        # OUTPUT
-        # M_e(z_{at}) = {e: Z_{at} matches the condition part of classifier e}.
-
-        # The members of M.(zat) form a class of potential "bidders" in an "auction" whose purpose
-        # is to determine which classifier makes the decision of agent a at time t.
 
         return match_index
 
-    def test_compatibility(self, classifier, own_storage, other_storage):
+    def test_compatibility(self, classifier, own_storage, partner_storage):
 
         cond_own_storage = self.compare_classifier_triad_with_int(classifier.own_storage, own_storage)
-        cond_other_storage = self.compare_classifier_triad_with_int(classifier.other_storage, other_storage)
-        return cond_own_storage * cond_other_storage
-
-    def get_decision(self):
-
-        return self.collection_of_classifiers[self.selected_classifier_index].trading_decision
-
-    def update_counter_of_winner_classifier(self):
-
-        self.collection_of_classifiers[self.selected_classifier_index].update_theta_counter()
-
-    def make_payments(self):
-        
-        self.collection_of_classifiers[self.selected_classifier_index].update_strength()
+        cond_partner_storage = self.compare_classifier_triad_with_int(classifier.partner_storage, partner_storage)
+        return cond_own_storage * cond_partner_storage
 
 
 class ConsumptionClassifierSystem(ClassifierSystem):
 
-    def __init__(self):
+    def __init__(self, b21, b22, initial_strength):
 
         super().__init__()
+
+        self.b21 = b21
+        self.b22 = b22
+        self.initial_strength = initial_strength
+
+    def prepare_classifiers(self):
+
+        for i in self.encoding_of_goods:
+
+            for j in [0, 1]:
+
+                self.collection_of_classifiers.append(
+                    ConsumptionClassifier(
+                        own_storage=i,
+                        decision=j,
+                        b21=self.b21,
+                        b22=self.b22,
+                        strength=self.initial_strength
+                    )
+                )
 
     def get_potential_bidders(self, own_storage):
 
@@ -183,95 +232,77 @@ class ConsumptionClassifierSystem(ClassifierSystem):
 
         return match_index
 
-    def update_counter_of_winner_classifier(self):
 
-        # Equation 10
-        self.collection_of_classifiers[self.selected_classifier_index].update_theta_counter()
-
-    def make_payments(self, indicated_exchange_classifier, utility_derived_from_consumption):
-
-        if self.previous_selected_classifier_index is not None:
-            self.collection_of_classifiers[self.previous_selected_classifier_index].update_strength(
-                indicated_exchange_classifier, utility_derived_from_consumption)
-
-
+# --------------------------------------------------------------------------------------------------- #
+# -------------------------------- CLASSIFIER ------------------------------------------------------- #
 # --------------------------------------------------------------------------------------------------- #
 
 class Classifier(object):
 
-    def __init__(self, parent):
+    def __init__(self, strength, decision):
 
-        self.parent = parent
+        self.strength = strength
+        self.decision = decision
 
-        self.strength = 1
-        self.previous_strength = 1
         self.theta_counter = 1
-        self.previous_theta_counter = 1
-
-        self.decision = np.random.choice([0, 1])
 
     def update_theta_counter(self):
-        self.previous_theta_counter = self.theta_counter
+
         self.theta_counter += 1
 
 
 class ExchangeClassifier(Classifier):
 
-    def __init__(self, parent,
-                 own_storage=np.random.choice([0, 1, np.nan], size=3, replace=True),
-                 partner_storage=np.random.choice([0, 1, np.nan], size=3, replace=True)):
+    def __init__(self, own_storage, partner_storage, decision, strength, b11, b12):
 
-        super().__init__(parent)
+        super().__init__(strength=strength, decision=decision)
 
         self.own_storage = own_storage
         self.partner_storage = partner_storage
 
-        self.sigma = 1 / (1 + np.sum(self.own_storage == np.nan) + np.sum(self.partner_storage == np.nan))
+        sigma = 1 / (1 + sum(self.own_storage == -1) + sum(self.partner_storage == -1))
 
         # Equation 11a
-        self.b1 = self.parent.b11 + self.parent.b12 * self.sigma
+        self.b1 = b11 + b12 * sigma
 
-    def update_strength(self, indicated_consumption_classifier):
+    def update_strength(self, best_consumption_classifier):
 
-        consumption_classifier_bid = indicated_consumption_classifier.b2 * indicated_consumption_classifier.strength
+        consumption_classifier_bid = best_consumption_classifier.b2 * best_consumption_classifier.strength
 
-        self.strength = self.previous_strength - (1 / self.theta_counter) * (
-            (1 + self.b1) * self.previous_strength
+        own_bid = (1 + self.b1) * self.strength
+
+        self.strength -= (1 / self.theta_counter) * (
+            own_bid
             - consumption_classifier_bid
         )
 
 
 class ConsumptionClassifier(Classifier):
 
-    def __init__(self, parent):
+    def __init__(self, own_storage, strength, b21, b22, decision):
 
-        super().__init__(parent)
+        super().__init__(strength=strength, decision=decision)
 
         # Object in hand at the end of the turn
-        self.own_storage = np.random.choice([0, 1, np.nan], size=3, replace=True)
+        self.own_storage = own_storage
 
-        self.sigma = 1 / (1 + np.sum(self.own_storage == np.nan))
+        sigma = 1 / (1 + sum(self.own_storage == -1))
 
         # Equation 11b
-        self.b2 = self.parent.b21 + self.parent.b22 * self.sigma
+        self.b2 = b21 + b22 * sigma
 
-    def update_strength(self, indicated_exchange_classifier, utility_derived_from_consumption):
+    def update_strength(
+            self, is_winning_exchange_classifier, best_exchange_classifier, previous_utility):
 
-        self.previous_strength = self.strength
-
-        if indicated_exchange_classifier:
-            exchange_classifier_bid = indicated_exchange_classifier.b1 * indicated_exchange_classifier.strength
+        if is_winning_exchange_classifier:
+            exchange_classifier_bid = best_exchange_classifier.b1 * best_exchange_classifier.strength
         else:
             exchange_classifier_bid = 0
 
         # Equation 12
-        self.strength = self.previous_strength - (1 / indicated_exchange_classifier.previous_theta) * (
-            (1 + self.b2) * self.previous_strength
-            - exchange_classifier_bid - utility_derived_from_consumption
+        self.strength -= (1 / self.theta_counter) * (
+            (1 + self.b2) * self.strength
+            - exchange_classifier_bid - previous_utility
         )
-
-
-
-
 
 

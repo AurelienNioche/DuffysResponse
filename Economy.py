@@ -125,7 +125,8 @@ class Economy(object):
 
                     # ---- STATS ------ #
                     exchange_type = tuple(sorted([i_object, j_object]))
-                    exchanges[exchange_type] += 1
+                    if i_object != j_object:
+                        exchanges[exchange_type] += 1
                     n_exchange += 1
                     # ----------- #
 
