@@ -5,6 +5,8 @@ from AbstractClasses import Agent
 
 class MarimonAgent(Agent):
 
+    name = "Marimon"
+
     def __init__(self, **kwargs):
 
         super().__init__(**kwargs)
@@ -55,15 +57,17 @@ class MarimonAgent(Agent):
         # Choose the right classifier
 
         # Is there a winning exchange classifier?
+        # # is_winning_exchange_classifier = 1
         is_winning_exchange_classifier = \
-            self.best_exchange_classifier.decision = 0 \
+            self.best_exchange_classifier.decision == 0 \
             or self.previous_object_in_hand != self.in_hand
 
         # Update strength of previous selected classifier
         if self.best_consumption_classifier:
 
             self.best_consumption_classifier.update_strength(
-                previous_utility=self.utility_derived_from_consumption*self.consumption,
+                previous_utility=self.utility_derived_from_consumption*self.consumption
+                - self.storing_costs[self.in_hand],
                 best_exchange_classifier=self.best_exchange_classifier,
                 is_winning_exchange_classifier=is_winning_exchange_classifier
             )
