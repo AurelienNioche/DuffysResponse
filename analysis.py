@@ -29,6 +29,8 @@ def represent_results(backup, parameters, display=True, fig_name=None):
         y1.append(exchanges[(0, 2)])
         y2.append(exchanges[(1, 2)])
 
+    ax.set_ylim([-0.02, 1.02])
+
     ax.plot(x, y0, label="Exchange (1, 2)", linewidth=2)
     ax.plot(x, y1, label="Exchange (1, 3)", linewidth=2)
     ax.plot(x, y2, label="Exchange (2, 3)", linewidth=2)
@@ -48,6 +50,9 @@ def represent_results(backup, parameters, display=True, fig_name=None):
     # Fourth subplot
     ax = plt.subplot(n_lines, n_columns, 4)
     ax.set_title("Frequency of acceptance of the third good according to time \n")
+
+    ax.set_ylim([-0.02, 1.02])
+
     ax.plot(x, [i[0] for i in accept_third_object],
             label="Agent I ({}, {})".format(
                 parameters["kw_model"].roles[0, 0] + 1,
