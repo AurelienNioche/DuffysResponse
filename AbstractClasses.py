@@ -36,6 +36,9 @@ class Agent(object):
         # Keep a trace for time t if the agent consumed or not.
         self.consumption = 0
 
+        # Keep a trace whether the agent proceed to an exchange
+        self.exchange = None
+
         # Object an agent has in hand
         self.in_hand = self.P
 
@@ -49,3 +52,13 @@ class Agent(object):
 
         if self.consumption:
             self.in_hand = self.P
+
+    def proceed_to_exchange(self, new_object):
+
+        if new_object is not None:
+            self.exchange = True
+            self.in_hand = new_object
+
+        else:
+            self.exchange = False
+

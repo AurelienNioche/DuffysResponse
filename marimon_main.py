@@ -21,5 +21,10 @@ if __name__ == "__main__":
         launch(
             **parameters
         )
-
-    represent_results(backup=backup, parameters=parameters, fig_name=path.expanduser("~/Desktop/KW_Marimon_Agents.pdf"))
+    fig_name = path.expanduser("~/Desktop/KW_Marimon_Agents.pdf")
+    init_fig_name = fig_name.split(".")[0]
+    i = 2
+    while path.exists(fig_name):
+        fig_name = init_fig_name + "{}.pdf".format(i)
+        i += 1
+    represent_results(backup=backup, parameters=parameters, fig_name=fig_name)

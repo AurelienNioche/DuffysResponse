@@ -21,7 +21,6 @@ class MarimonAgent(Agent):
             initial_strength=self.agent_parameters["initial_strength"])
 
         self.previous_object_in_hand = self.P
-        self.previous_utility = 0
 
         self.utility_derived_from_consumption = self.agent_parameters["u"]
 
@@ -42,6 +41,8 @@ class MarimonAgent(Agent):
         # Equation 5
         m_index = self.exchange_classifier_system.get_potential_bidders(self.in_hand, proposed_object)
 
+        # assert len(m_index) == 18
+
         # Equation 6
         self.best_exchange_classifier = self.exchange_classifier_system.get_best_classifier(m_index)
 
@@ -57,19 +58,23 @@ class MarimonAgent(Agent):
         # Choose the right classifier
 
         # Is there a winning exchange classifier?
-        # # is_winning_exchange_classifier = 1
+        # is_winning_exchange_classifier = 1
         is_winning_exchange_classifier = \
             self.best_exchange_classifier.decision == 0 \
-            or self.previous_object_in_hand != self.in_hand
+            or self.exchange is True
 
         # Update strength of previous selected classifier
         if self.best_consumption_classifier:
 
+            if is_winning_exchange_classifier:
+                exchange_classifier_bid = self.best_exchange_classifier.get_bid()
+            else:
+                exchange_classifier_bid = 0
+
             self.best_consumption_classifier.update_strength(
-                previous_utility=self.utility_derived_from_consumption*self.consumption
-                - self.storing_costs[self.in_hand],
-                best_exchange_classifier=self.best_exchange_classifier,
-                is_winning_exchange_classifier=is_winning_exchange_classifier
+                utility=self.utility_derived_from_consumption*self.consumption
+                    - self.storing_costs[self.previous_object_in_hand],
+                exchange_classifier_bid=exchange_classifier_bid
             )
 
         # ------------- #
@@ -82,19 +87,17 @@ class MarimonAgent(Agent):
 
         # Equation 8
         self.best_consumption_classifier = self.consumption_classifier_system.get_best_classifier(m_index)
-
-        # Update theta counters
-        if is_winning_exchange_classifier:
-            self.best_exchange_classifier.update_theta_counter()
-
         self.best_consumption_classifier.update_theta_counter()
 
-        # Update strength of best exchange classifier
-        self.best_exchange_classifier.update_strength(self.best_consumption_classifier)
+        # Update
+        if is_winning_exchange_classifier:
+            self.best_exchange_classifier.update_theta_counter()
+            self.best_exchange_classifier.update_strength(
+                consumption_classifier_bid=self.best_consumption_classifier.get_bid())
 
         # If he decides to consume...
         # Equation 3 & 4
-        if self.best_consumption_classifier.decision:
+        if self.best_consumption_classifier.decision == 1:
 
             # And the agent has his consumption good
             if self.in_hand == self.C:
@@ -105,7 +108,6 @@ class MarimonAgent(Agent):
 
         # Keep a trace of the previous object in hand
         self.previous_object_in_hand = self.in_hand
-        self.previous_utility = self.consumption * self.utility_derived_from_consumption
 
 # --------------------------------------------------------------------------------------------------- #
 # -------------------------------- CLASSIFIER SYSTEM ------------------------------------------------ #
@@ -121,12 +123,12 @@ class ClassifierSystem(object):
         # Encoding of goods
         self.encoding_of_goods = np.array(
             [
-                [1, 0, 0],
-                [0, 1, 0],
-                [0, 0, 1],
-                [0, -1, -1],
-                [-1, 0, -1],
-                [-1, -1, 0]
+                [1, 0, 0],  # Good 0
+                [0, 1, 0],  # Good 1
+                [0, 0, 1],  # Good 2
+                [0, -1, -1],  # Not good 0
+                [-1, 0, -1],  # Not good 1
+                [-1, -1, 0]   # Not good 2
             ], dtype=int
         )
 
@@ -134,24 +136,13 @@ class ClassifierSystem(object):
 
         s = np.asarray([self.collection_of_classifiers[i].strength for i in m_index])
 
-        best_c_index = np.random.choice(np.where(s == max(s))[0])
+        # assert len(s) in [18, 6]
 
-        best_classifier_idx = m_index[best_c_index]
+        best_m_idx = np.random.choice(np.where(s == max(s))[0])
+
+        best_classifier_idx = m_index[best_m_idx]
 
         return self.collection_of_classifiers[best_classifier_idx]
-
-    @staticmethod
-    def compare_classifier_triad_with_int(classifier_triad, good_encoded_in_int):
-
-        # Code: Meaning
-        # 100: good1 (-> 0)
-        # 010: good2 (-> 1)
-        # 001: good3 (-> 2)
-        # 0##: not good1 (-> 0)
-        # #0#: not good2 (-> 1)
-        # ##0: not good3 (-> 2)
-
-        return classifier_triad[good_encoded_in_int] != 0
 
 
 class ExchangeClassifierSystem(ClassifierSystem):
@@ -187,16 +178,10 @@ class ExchangeClassifierSystem(ClassifierSystem):
         match_index = []
         for i, c in enumerate(self.collection_of_classifiers):
 
-            if self.test_compatibility(c, own_storage, partner_storage):
+            if c.is_matching(own_storage, partner_storage):
                 match_index.append(i)
 
         return match_index
-
-    def test_compatibility(self, classifier, own_storage, partner_storage):
-
-        cond_own_storage = self.compare_classifier_triad_with_int(classifier.own_storage, own_storage)
-        cond_partner_storage = self.compare_classifier_triad_with_int(classifier.partner_storage, partner_storage)
-        return cond_own_storage * cond_partner_storage
 
 
 class ConsumptionClassifierSystem(ClassifierSystem):
@@ -230,7 +215,7 @@ class ConsumptionClassifierSystem(ClassifierSystem):
         match_index = []
         for i, c in enumerate(self.collection_of_classifiers):
 
-            if self.compare_classifier_triad_with_int(c.own_storage, own_storage):
+            if c.is_matching(own_storage):
 
                 match_index.append(i)
 
@@ -248,6 +233,7 @@ class Classifier(object):
         self.strength = strength
         self.decision = decision
 
+        # Equations 9 and 10
         self.theta_counter = 1
 
     def update_theta_counter(self):
@@ -261,24 +247,33 @@ class ExchangeClassifier(Classifier):
 
         super().__init__(strength=strength, decision=decision)
 
-        self.own_storage = own_storage
-        self.partner_storage = partner_storage
+        self.own_storage = np.asarray(own_storage)
+        self.partner_storage = np.asarray(partner_storage)
 
-        sigma = 1 / (1 + sum(self.own_storage == -1) + sum(self.partner_storage == -1))
+        self.sigma = 1 / (1 + sum(self.own_storage[:] == -1) + sum(self.partner_storage[:] == -1))
 
         # Equation 11a
-        self.b1 = b11 + b12 * sigma
+        self.b1 = b11 + b12 * self.sigma
 
-    def update_strength(self, best_consumption_classifier):
+    def get_bid(self):
 
-        consumption_classifier_bid = best_consumption_classifier.b2 * best_consumption_classifier.strength
+        # Def of a bid p 138
+        return self.b1 * self.strength
 
-        own_bid = (1 + self.b1) * self.strength
+    def update_strength(self, consumption_classifier_bid):
 
         self.strength -= (1 / self.theta_counter) * (
-            own_bid
+            self.get_bid() + self.strength
             - consumption_classifier_bid
         )
+
+    def is_matching(self, own_storage, partner_storage):
+
+        # Args are integers (0, 1 or 2)
+        # self.own_storage is an array ([0, 0, 1] or [-1, -1, 0] and so on)
+        cond_own_storage = self.own_storage[own_storage] != 0
+        cond_partner_storage = self.partner_storage[partner_storage] != 0
+        return cond_own_storage and cond_partner_storage
 
 
 class ConsumptionClassifier(Classifier):
@@ -288,25 +283,43 @@ class ConsumptionClassifier(Classifier):
         super().__init__(strength=strength, decision=decision)
 
         # Object in hand at the end of the turn
-        self.own_storage = own_storage
+        self.own_storage = np.asarray(own_storage)
 
-        sigma = 1 / (1 + sum(self.own_storage == -1))
+        sigma = 1 / (1 + sum(self.own_storage[:] == -1))
 
         # Equation 11b
         self.b2 = b21 + b22 * sigma
 
-    def update_strength(
-            self, is_winning_exchange_classifier, best_exchange_classifier, previous_utility):
+    def get_bid(self):
 
-        if is_winning_exchange_classifier:
-            exchange_classifier_bid = best_exchange_classifier.b1 * best_exchange_classifier.strength
-        else:
-            exchange_classifier_bid = 0
+        return self.b2 * self.strength
+
+    def update_strength(self, exchange_classifier_bid, utility):
 
         # Equation 12
-        self.strength -= (1 / self.theta_counter) * (
-            (1 + self.b2) * self.strength
-            - exchange_classifier_bid - previous_utility
+        self.strength -= (1 / (self.theta_counter - 1)) * (
+            self.get_bid() + self.strength
+            - exchange_classifier_bid - utility
         )
+
+    def is_matching(self, own_storage):
+
+        return self.own_storage[own_storage] != 0
+
+
+def main():
+
+    exh = ExchangeClassifierSystem(b11=0.35, b12=0.35, initial_strength=0)
+    exh.prepare_classifiers()
+    for i in exh.collection_of_classifiers:
+
+        print(i.own_storage, i.partner_storage, i.decision, i.sigma)
+
+
+
+
+if __name__ == "__main__":
+
+    main()
 
 

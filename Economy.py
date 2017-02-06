@@ -112,23 +112,28 @@ class Economy(object):
 
                     # ---- STATS ------ #
                     # Consider particular case of offering third object
-                    if j_object == _[i].T:
+                    if j_object == _[i].T and i_object == _[i].P:
                         third_good_acceptance[_[i].type] += 1
 
-                    if i_object == _[j].T:
+                    if i_object == _[j].T and j_object == _[j].P:
                         third_good_acceptance[_[j].type] += 1
                     # ------------ #
 
                     # ...exchange occurs
-                    _[i].in_hand = j_object
-                    _[j].in_hand = i_object
+                    _[i].proceed_to_exchange(j_object)
+                    _[j].proceed_to_exchange(i_object)
 
                     # ---- STATS ------ #
                     exchange_type = tuple(sorted([i_object, j_object]))
                     if i_object != j_object:
                         exchanges[exchange_type] += 1
-                    n_exchange += 1
+                        n_exchange += 1
                     # ----------- #
+
+                else:
+
+                    _[i].proceed_to_exchange(None)
+                    _[j].proceed_to_exchange(None)
 
             # Each agent consumes at the end of each round and adapt his behavior (or not).
             for agent in self.agents:
