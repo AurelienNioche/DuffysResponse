@@ -7,7 +7,7 @@ class Agent(object):
     Abstract class for agents
     """
 
-    def __init__(self, prod, cons, third, agent_type, agent_parameters, storing_costs, kw_model, idx):
+    def __init__(self, prod, cons, third, agent_type, agent_parameters, storing_costs, idx=None):
 
         # Production object (integer in [0, 1, 2])
         self.P = prod
@@ -29,9 +29,6 @@ class Agent(object):
 
         # Storing costs (numpy array of size 3)
         self.storing_costs = storing_costs
-
-        # Could be Model A or Model B
-        self.kw_model = kw_model
 
         # Keep a trace for time t if the agent consumed or not.
         self.consumption = 0

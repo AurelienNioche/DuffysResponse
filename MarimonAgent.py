@@ -34,7 +34,7 @@ class MarimonAgent(Agent):
         self.exchange_classifier_system.prepare_classifiers()
         self.consumption_classifier_system.prepare_classifiers()
 
-    def are_you_satisfied(self, proposed_object, type_of_other_agent, proportions):
+    def are_you_satisfied(self, proposed_object, type_of_other_agent=None, proportions=None):
 
         # Choose the right classifier
 
@@ -157,6 +157,7 @@ class ExchangeClassifierSystem(ClassifierSystem):
 
     def prepare_classifiers(self):
 
+        idx = 0
         for i, j in product(self.encoding_of_goods, repeat=2):
 
             for k in [0, 1]:
@@ -168,9 +169,11 @@ class ExchangeClassifierSystem(ClassifierSystem):
                         decision=k,
                         strength=self.initial_strength,
                         b11=self.b11,
-                        b12=self.b12
+                        b12=self.b12,
+                        idx=idx
                     )
                 )
+            idx += 1
 
     def get_potential_bidders(self, own_storage, partner_storage):
 
@@ -196,6 +199,8 @@ class ConsumptionClassifierSystem(ClassifierSystem):
 
     def prepare_classifiers(self):
 
+        idx = 0
+
         for i in self.encoding_of_goods:
 
             for j in [0, 1]:
@@ -206,9 +211,11 @@ class ConsumptionClassifierSystem(ClassifierSystem):
                         decision=j,
                         b21=self.b21,
                         b22=self.b22,
-                        strength=self.initial_strength
+                        strength=self.initial_strength,
+                        idx=idx
                     )
                 )
+            idx += 1
 
     def get_potential_bidders(self, own_storage):
 
@@ -228,13 +235,15 @@ class ConsumptionClassifierSystem(ClassifierSystem):
 
 class Classifier(object):
 
-    def __init__(self, strength, decision):
+    def __init__(self, strength, decision, idx):
 
         self.strength = strength
         self.decision = decision
 
         # Equations 9 and 10
         self.theta_counter = 1
+
+        self.idx = idx
 
     def update_theta_counter(self):
 
@@ -243,9 +252,9 @@ class Classifier(object):
 
 class ExchangeClassifier(Classifier):
 
-    def __init__(self, own_storage, partner_storage, decision, strength, b11, b12):
+    def __init__(self, own_storage, partner_storage, decision, strength, b11, b12, idx):
 
-        super().__init__(strength=strength, decision=decision)
+        super().__init__(strength=strength, decision=decision, idx=idx)
 
         self.own_storage = np.asarray(own_storage)
         self.partner_storage = np.asarray(partner_storage)
@@ -275,12 +284,20 @@ class ExchangeClassifier(Classifier):
         cond_partner_storage = self.partner_storage[partner_storage] != 0
         return cond_own_storage and cond_partner_storage
 
+    def get_info(self):
+
+        print("idx: {}, own_storage: {}, partner_storage: {};\n"
+              "decision: {}, strength: {}, bid: {}".format(
+            self.idx, self.own_storage, self.partner_storage,
+            self.decision, self.strength, self.get_bid()
+        ))
+
 
 class ConsumptionClassifier(Classifier):
 
-    def __init__(self, own_storage, strength, b21, b22, decision):
+    def __init__(self, own_storage, strength, b21, b22, decision, idx):
 
-        super().__init__(strength=strength, decision=decision)
+        super().__init__(strength=strength, decision=decision, idx=idx)
 
         # Object in hand at the end of the turn
         self.own_storage = np.asarray(own_storage)
@@ -307,7 +324,7 @@ class ConsumptionClassifier(Classifier):
         return self.own_storage[own_storage] != 0
 
 
-def main():
+def test_exchange_classifier_system():
 
     exh = ExchangeClassifierSystem(b11=0.35, b12=0.35, initial_strength=0)
     exh.prepare_classifiers()
@@ -316,10 +333,26 @@ def main():
         print(i.own_storage, i.partner_storage, i.decision, i.sigma)
 
 
+def test_agent():
+
+    np.random.seed(seed=12)
+
+    a = MarimonAgent(
+        prod=1,
+        cons=0,
+        third=2,
+        agent_type=0,
+        storing_costs=np.array([0.1, 1, 20]),
+        agent_parameters={"u": 100, "b11": 0.025, "b12": 0.025, "b21": 0.25, "b22": 0.25, "initial_strength": 0}
+    )
+    exchange_decision = a.are_you_satisfied(proposed_object=0)
+    a.best_exchange_classifier.get_info()
+    print(exchange_decision)
+
 
 
 if __name__ == "__main__":
 
-    main()
+    test_agent()
 
 

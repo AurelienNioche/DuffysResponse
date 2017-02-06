@@ -41,7 +41,6 @@ class Economy(object):
                     prod=i, cons=j, third=k,
                     storing_costs=self.storing_costs,
                     agent_type=agent_type,
-                    kw_model=self.kw_model,
                     idx=agent_idx)
 
                 agents.append(a)
