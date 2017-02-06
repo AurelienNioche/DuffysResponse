@@ -41,8 +41,6 @@ class MarimonAgent(Agent):
         # Equation 5
         m_index = self.exchange_classifier_system.get_potential_bidders(self.in_hand, proposed_object)
 
-        # assert len(m_index) == 18
-
         # Equation 6
         self.best_exchange_classifier = self.exchange_classifier_system.get_best_classifier(m_index)
 
@@ -63,7 +61,7 @@ class MarimonAgent(Agent):
             self.best_exchange_classifier.decision == 0 \
             or self.exchange is True
 
-        # Update strength of previous selected classifier
+        # Update strength of previous winning consumption classifier
         if self.best_consumption_classifier:
 
             if is_winning_exchange_classifier:
@@ -71,9 +69,11 @@ class MarimonAgent(Agent):
             else:
                 exchange_classifier_bid = 0
 
+            utility = self.utility_derived_from_consumption*self.consumption \
+                - self.storing_costs[self.previous_object_in_hand]
+
             self.best_consumption_classifier.update_strength(
-                utility=self.utility_derived_from_consumption*self.consumption
-                    - self.storing_costs[self.previous_object_in_hand],
+                utility=utility,
                 exchange_classifier_bid=exchange_classifier_bid
             )
 
@@ -91,6 +91,7 @@ class MarimonAgent(Agent):
 
         # Update
         if is_winning_exchange_classifier:
+
             self.best_exchange_classifier.update_theta_counter()
             self.best_exchange_classifier.update_strength(
                 consumption_classifier_bid=self.best_consumption_classifier.get_bid())
@@ -136,8 +137,6 @@ class ClassifierSystem(object):
 
         s = np.asarray([self.collection_of_classifiers[i].strength for i in m_index])
 
-        # assert len(s) in [18, 6]
-
         best_m_idx = np.random.choice(np.where(s == max(s))[0])
 
         best_classifier_idx = m_index[best_m_idx]
@@ -173,7 +172,7 @@ class ExchangeClassifierSystem(ClassifierSystem):
                         idx=idx
                     )
                 )
-            idx += 1
+                idx += 1
 
     def get_potential_bidders(self, own_storage, partner_storage):
 
@@ -215,7 +214,7 @@ class ConsumptionClassifierSystem(ClassifierSystem):
                         idx=idx
                     )
                 )
-            idx += 1
+                idx += 1
 
     def get_potential_bidders(self, own_storage):
 
@@ -286,11 +285,12 @@ class ExchangeClassifier(Classifier):
 
     def get_info(self):
 
-        print("idx: {}, own_storage: {}, partner_storage: {};\n"
+        print("[Exchange {}] own_storage: {}, partner_storage: {},\n"
               "decision: {}, strength: {}, bid: {}".format(
-            self.idx, self.own_storage, self.partner_storage,
-            self.decision, self.strength, self.get_bid()
-        ))
+                self.idx, self.own_storage, self.partner_storage,
+                self.decision, self.strength, self.get_bid()
+                )
+              )
 
 
 class ConsumptionClassifier(Classifier):
@@ -323,6 +323,14 @@ class ConsumptionClassifier(Classifier):
 
         return self.own_storage[own_storage] != 0
 
+    def get_info(self):
+
+        print("[Consumption {}] own_storage: {},\n"
+              "decision: {}, strength: {}, bid: {}".format(
+                self.idx, self.own_storage,
+                self.decision, self.strength, self.get_bid()
+              ))
+
 
 def test_exchange_classifier_system():
 
@@ -345,10 +353,44 @@ def test_agent():
         storing_costs=np.array([0.1, 1, 20]),
         agent_parameters={"u": 100, "b11": 0.025, "b12": 0.025, "b21": 0.25, "b22": 0.25, "initial_strength": 0}
     )
-    exchange_decision = a.are_you_satisfied(proposed_object=0)
-    a.best_exchange_classifier.get_info()
-    print(exchange_decision)
 
+    previous_consumption_idx = None
+    for i in range(10):
+
+        print("Round", i)
+        print()
+
+        exc_decision = a.are_you_satisfied(proposed_object=0)
+        a.best_exchange_classifier.get_info()
+
+        if exc_decision:
+            a.proceed_to_exchange(new_object=0)
+        else:
+            a.proceed_to_exchange(new_object=None)
+
+        a.consume()
+
+        print()
+        a.best_consumption_classifier.get_info()
+
+        if previous_consumption_idx:
+            print()
+            print("AFTER UPDATE FOR PREVIOUS CONSUMPTION CLASSIFIER \n"
+                  "(based on utility at t-1 and bid of winning exchange classifier [idx {}] a t)".format(
+                a.best_exchange_classifier.idx
+            ))
+            a.consumption_classifier_system.collection_of_classifiers[previous_consumption_idx].get_info()
+
+        print()
+        print("AFTER UPDATE FOR EXCHANGE CLASSIFIER \n"
+              "(based on the bid of the winning consumption classifier [idx {}] a t)".format(
+            a.best_consumption_classifier.idx
+        ))
+        a.best_exchange_classifier.get_info()
+
+        previous_consumption_idx = a.best_consumption_classifier.idx
+
+        print()
 
 
 if __name__ == "__main__":
