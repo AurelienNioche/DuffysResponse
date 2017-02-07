@@ -14,6 +14,7 @@ class ModelA(object):
     ], dtype=int)
 
     name = "ModelA"
+
 # --------------------------------------------------------------------------------------------------- #
 # -------------------------------- MARIMON AGENT ---------------------------------------------------- #
 # --------------------------------------------------------------------------------------------------- #
@@ -132,8 +133,6 @@ class MarimonAgent(object):
 
     def proceed_to_payments(self, new_best_consumption_classifier):
 
-        new_best_consumption_classifier.update_theta_counter()
-
         # Is there a winning exchange classifier?
         is_winning_exchange_classifier = \
             self.best_exchange_classifier.decision == 0 \
@@ -153,6 +152,8 @@ class MarimonAgent(object):
                 utility=self.utility,
                 exchange_classifier_bid=exchange_classifier_bid
             )
+
+        new_best_consumption_classifier.update_theta_counter()
 
         if is_winning_exchange_classifier:
 
