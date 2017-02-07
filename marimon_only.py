@@ -2,10 +2,18 @@ import numpy as np
 from os import path
 from itertools import product
 from tqdm import tqdm
-from KWModels import ModelA
 from analysis import represent_results
 
 
+class ModelA(object):
+
+    roles = np.array([
+        [1, 0, 2],
+        [2, 1, 0],
+        [0, 2, 1]
+    ], dtype=int)
+
+    name = "ModelA"
 # --------------------------------------------------------------------------------------------------- #
 # -------------------------------- MARIMON AGENT ---------------------------------------------------- #
 # --------------------------------------------------------------------------------------------------- #
@@ -566,9 +574,9 @@ class Economy(object):
 
 def main():
     parameters = {
-        "t_max": 1000,
+        "t_max": 500,
         "u": 100, "b11": 0.025, "b12": 0.025, "b21": 0.25, "b22": 0.25, "initial_strength": 0,
-        "role_repartition": np.array([50, 50, 50]),
+        "role_repartition": np.array([500, 500, 500]),
         "storing_costs": np.array([0.1, 1., 20.]),
         "kw_model": ModelA
     }

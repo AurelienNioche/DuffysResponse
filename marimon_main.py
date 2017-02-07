@@ -22,7 +22,7 @@ if __name__ == "__main__":
             **parameters
         )
     fig_name = path.expanduser("~/Desktop/KW_Marimon_Agents.pdf")
-    init_fig_name = fig_name.split(".")[0]
+    init_fig_name = fig_name.split(".")[
     i = 2
     while path.exists(fig_name):
         fig_name = init_fig_name + "{}.pdf".format(i)
