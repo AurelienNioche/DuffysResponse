@@ -9,10 +9,10 @@ from analysis import represent_results
 if __name__ == "__main__":
 
     parameters = {
-        "t_max": 100,
-        "agent_parameters": {"alpha": 0.3, "temp": 0.01},
+        "t_max": 200,
+        "agent_parameters": {"alpha": 0.5, "temp": 0.01},
         "role_repartition": np.array([500, 500, 500]),
-        "storing_costs": np.array([0.01, 0.04, 0.09]),
+        "storing_costs": np.array([0.01, 0.25, 0.5]),
         "kw_model": ModelA,
         "agent_model": RLAgent,
     }
@@ -22,4 +22,4 @@ if __name__ == "__main__":
             **parameters
         )
 
-    represent_results(backup=backup, parameters=parameters, fig_name=path.expanduser("~/Desktop/KW_RL_Agents.pdf"))
+    represent_results(backup=backup, parameters=parameters)

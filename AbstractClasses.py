@@ -1,4 +1,5 @@
 import numpy as np
+from KWModels import ModelA
 
 
 class Agent(object):
@@ -7,7 +8,7 @@ class Agent(object):
     Abstract class for agents
     """
 
-    def __init__(self, prod, cons, third, agent_type, agent_parameters, storing_costs, idx=None):
+    def __init__(self, prod, cons, third, agent_type, agent_parameters, storing_costs, kw_model=ModelA(), idx=None):
 
         # Production object (integer in [0, 1, 2])
         self.P = prod
@@ -38,6 +39,8 @@ class Agent(object):
 
         # Object an agent has in hand
         self.in_hand = self.P
+
+        self.kw_model = kw_model
 
     def are_you_satisfied(self, proposed_object, type_of_other_agent, proportions):
 

@@ -3,6 +3,13 @@ from AbstractClasses import Agent
 from module.useful_functions import softmax
 
 
+'''
+Same as 'RL' but with different learning rates for positive and negative outcomes.
+RL with reinforcement of strategies understood as Game Theory does
+ (a strategy is a set of action plans for every possible situation)
+'''
+
+
 class RL2Agent(Agent):
     name = "RL2"
 

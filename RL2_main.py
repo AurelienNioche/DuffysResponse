@@ -22,6 +22,4 @@ if __name__ == "__main__":
             **parameters
         )
 
-    represent_results(backup=backup, parameters=parameters, fig_name=path.expanduser("~/Desktop/KW_RL2_Agents.pdf"))
-
-#
+    represent_results(backup=backup, parameters=parameters)

@@ -3,6 +3,12 @@ from AbstractClasses import Agent
 from module.useful_functions import softmax
 
 
+'''
+RL with reinforcement of strategies understood as Game Theory does
+ (a strategy is a set of action plans for every possible situation)
+'''
+
+
 class RLAgent(Agent):
 
     name = "RL"
