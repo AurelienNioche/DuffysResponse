@@ -58,7 +58,8 @@ class Economy(object):
             "exchanges": [],
             "n_exchanges": [],
             "consumption": [],
-            "third_good_acceptance": []
+            "third_good_acceptance": [],
+            "proportions": []
         }
 
         for t in tqdm(range(self.t_max)):
@@ -80,7 +81,7 @@ class Economy(object):
 
                 proportions[i.type, i.in_hand] += 1
 
-            proportions[:] = proportions / self.n_agent
+            proportions[:] = proportions / (self.n_agent // 3)
 
             # --------------------------------- #
 
@@ -165,7 +166,7 @@ class Economy(object):
             back_up["consumption"].append(consumption)
             back_up["n_exchanges"].append(n_exchange)
             back_up["third_good_acceptance"].append(third_good_acceptance.copy())
-
+            back_up["proportions"].append(proportions.copy())
             # ----------------------------- #
 
         return back_up

@@ -2,7 +2,9 @@ import numpy as np
 from os import path
 from itertools import product
 from tqdm import tqdm
+from pylab import plt
 from analysis import represent_results
+
 
 
 class ModelA(object):
@@ -461,7 +463,8 @@ class Economy(object):
             "exchanges": [],
             "n_exchanges": [],
             "consumption": [],
-            "third_good_acceptance": []
+            "third_good_acceptance": [],
+            "proportions": []
         }
 
         for t in tqdm(range(self.t_max)):
@@ -482,7 +485,7 @@ class Economy(object):
             for i in self.agents:
                 proportions[i.type, i.in_hand] += 1
 
-            proportions[:] = proportions / self.n_agent
+            proportions[:] = proportions / (self.n_agent//3)
 
             # --------------------------------- #
 
@@ -563,6 +566,7 @@ class Economy(object):
             consumption /= self.n_agent
 
             # For back up
+            back_up["proportions"].append(proportions.copy())
             back_up["exchanges"].append(exchanges.copy())
             back_up["consumption"].append(consumption)
             back_up["n_exchanges"].append(n_exchange)
@@ -573,11 +577,52 @@ class Economy(object):
         return back_up
 
 
+def plot_proportions(proportions, fig_name):
+
+    # Container for proportions of agents having this or that in hand according to their type
+    #  - rows: type of agent
+    # - columns: type of good
+
+    fig = plt.figure(figsize=(25, 12))
+    fig.patch.set_facecolor('white')
+
+    n_lines = 3
+    n_columns = 1
+
+    x = np.arange(len(proportions))
+
+    for agent_type in range(3):
+
+        # First subplot
+        ax = plt.subplot(n_lines, n_columns, agent_type + 1)
+        ax.set_title("Proportion of agents of type {} having good 1, 2, 3 in hand\n".format(agent_type + 1))
+
+        y0 = []
+        y1 = []
+        y2 = []
+        for proportions_at_t in proportions:
+            y0.append(proportions_at_t[agent_type, 0])
+            y1.append(proportions_at_t[agent_type, 1])
+            y2.append(proportions_at_t[agent_type, 2])
+
+        ax.set_ylim([-0.02, 1.02])
+
+        ax.plot(x, y0, label="Good 1", linewidth=2)
+        ax.plot(x, y1, label="Good 2", linewidth=2)
+        ax.plot(x, y2, label="Good 3", linewidth=2)
+        ax.legend()
+
+    plt.tight_layout()
+
+    plt.savefig(filename=fig_name)
+
+
 def main():
+
     parameters = {
         "t_max": 500,
         "u": 100, "b11": 0.025, "b12": 0.025, "b21": 0.25, "b22": 0.25, "initial_strength": 0,
-        "role_repartition": np.array([500, 500, 500]),
+        "role_repartition": np.array([50, 50, 50]),
         "storing_costs": np.array([0.1, 1., 20.]),
         "kw_model": ModelA
     }
@@ -599,12 +644,15 @@ def main():
         fig_name = "{}{}.pdf".format(init_fig_name, i)
         i += 1
 
-    parameters["agent_parameters"] = {"u": 100, "b11": 0.025, "b12": 0.025,
-                                      "b21": 0.25, "b22": 0.25, "initial_strength": 0}
+    parameters["agent_parameters"] = {"u": parameters["u"], "b11": parameters["b11"], "b12": parameters["b12"],
+                                      "b21": parameters["b21"], "b22": parameters["b22"],
+                                      "initial_strength": parameters["initial_strength"]}
 
     parameters["agent_model"] = type("", (object, ), {"name": "Marimon"})()
 
     represent_results(backup=backup, parameters=parameters, fig_name=fig_name)
+
+    plot_proportions(proportions=backup["proportions"], fig_name=fig_name.split(".")[0] + "_proportions.pdf")
 
 
 if __name__ == "__main__":
