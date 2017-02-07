@@ -1,7 +1,7 @@
 from os import path
 import numpy as np
 from Economy import launch
-from RL import RLAgent
+from KwAgent import KwAgent
 from KWModels import ModelA
 from analysis import represent_results
 
@@ -14,7 +14,7 @@ if __name__ == "__main__":
         "role_repartition": np.array([500, 500, 500]),
         "storing_costs": np.array([0.01, 0.04, 0.09]),
         "kw_model": ModelA,
-        "agent_model": RLAgent,
+        "agent_model": KwAgent,
     }
 
     backup = \
@@ -22,4 +22,4 @@ if __name__ == "__main__":
             **parameters
         )
 
-    represent_results(backup=backup, parameters=parameters, fig_name=path.expanduser("~/Desktop/KW_RL_Agents.pdf"))
+    represent_results(backup=backup, parameters=parameters, fig_name=path.expanduser("~/Desktop/KW_Kw_Agents.pdf"))
