@@ -9,7 +9,7 @@ class Agent(object):
     """
     Abstract class for agents
     """
-    name="Stupid agent"
+    name = "Stupid agent"
 
     def __init__(self, prod, cons, third, agent_type, agent_parameters, storing_costs, kw_model=ModelA, idx=None):
 
