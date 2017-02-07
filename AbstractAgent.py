@@ -1,4 +1,6 @@
 import numpy as np
+from Economy import launch
+from analysis import represent_results
 from KWModels import ModelA
 
 
@@ -7,6 +9,7 @@ class Agent(object):
     """
     Abstract class for agents
     """
+    name="Stupid agent"
 
     def __init__(self, prod, cons, third, agent_type, agent_parameters, storing_costs, kw_model=ModelA, idx=None):
 
@@ -44,7 +47,10 @@ class Agent(object):
 
     def are_you_satisfied(self, proposed_object, type_of_other_agent, proportions):
 
-        return np.random.choice([True, False])
+        if proposed_object == self.C:
+            return True
+        else:
+            return np.random.choice([True, False])
 
     def consume(self):
 
@@ -61,4 +67,31 @@ class Agent(object):
 
         else:
             self.exchange = False
+
+
+def main():
+
+    parameters = {
+        "t_max": 500,
+        "agent_parameters": {"beta": 0.9, "u": 0.2},
+        "role_repartition": np.array([500, 500, 500]),
+        "storing_costs": np.array([0.01, 0.04, 0.09]),
+        "kw_model": ModelA,
+        "agent_model": Agent,
+    }
+
+    backup = \
+        launch(
+            **parameters
+        )
+
+    represent_results(backup=backup, parameters=parameters)
+
+if __name__ == "__main__":
+
+    main()
+
+
+
+
 

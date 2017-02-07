@@ -63,9 +63,9 @@ def main():
 
     parameters = {
         "t_max": 500,
-        "agent_parameters": {"beta": 0.9, "u": 1},
+        "agent_parameters": {"beta": 0.9, "u": 0.2},
         "role_repartition": np.array([500, 500, 500]),
-        "storing_costs": np.array([0.1, 0.25, 0.5]),
+        "storing_costs": np.array([0.01, 0.04, 0.09]),
         "kw_model": ModelA,
         "agent_model": DuffyAgent,
     }
