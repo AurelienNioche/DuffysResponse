@@ -1,13 +1,12 @@
 import numpy as np
 from tqdm import tqdm
-from RL import RLAgent
 from KWModels import ModelA
 
 
 class Economy(object):
 
-    def __init__(self, role_repartition, t_max, storing_costs,
-                 agent_parameters=None, agent_model=RLAgent, kw_model=ModelA):
+    def __init__(self, role_repartition, t_max, storing_costs, agent_model,
+                 agent_parameters=None, kw_model=ModelA):
 
         self.t_max = t_max
 

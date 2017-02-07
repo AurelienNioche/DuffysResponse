@@ -1,6 +1,8 @@
 import numpy as np
-from AbstractClasses import Agent
-from module.useful_functions import softmax
+from AbstractAgent import Agent
+from KWModels import ModelA
+from Economy import launch
+from analysis import represent_results
 
 
 class KwAgent(Agent):
@@ -8,107 +10,59 @@ class KwAgent(Agent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.beta = self.agent_parameters["beta"]
+        self.u = self.agent_parameters["u"]
 
-        # ------- STRATEGIES ------- #
-
-        # Dimension 0: strategies,
-        # Dimension 1: object in hand with relative idx (0: production good, 1: consumption good, 2: third good),
-        # Dimension 2: proposed object with relative idx (0: production good, 1: consumption good, 2: third good),
-        # We suppose that :
-        # - An agent can never has his consumption good in hand
-        #                   -> he directly consumes it (that is why we have 'nan' for Not A Number)
-        # - An agent always accepts his consumption good
-        # - An agent always refuse the exchange if the proposed object is the same that the one he has in hand
-        # - Strategies therefore contrast by attitude of the agent towards the third good if he has his production
-        #    good in hand, and the production good if he has his third good in hand
-        self.strategies = np.array([
-            # Strategy '0'
-            [[0, 1, 0],
-             [np.nan, np.nan, np.nan],
-             [0, 1, 0]],
-            # Strategy '1'
-            [[0, 1, 1],
-             [np.nan, np.nan, np.nan],
-             [0, 1, 0]],
-            # Strategy '2'
-            [[0, 1, 0],
-             [np.nan, np.nan, np.nan],
-             [1, 1, 0]],
-            # Strategy '3'
-            [[0, 1, 1],
-             [np.nan, np.nan, np.nan],
-             [1, 1, 0]],
-        ])
-
-        self.strategies_values = np.random.random(len(self.strategies))
-
-        # It will be an integer between 0 and 3
-        self.followed_strategy = None
-
-        self.utility = None
-
-        absolute_to_relative_3_types = np.array([
-            [
-                np.where(self.kw_model.roles[0] == 0)[0][0],
-                np.where(self.kw_model.roles[0] == 1)[0][0],
-                np.where(self.kw_model.roles[0] == 2)[0][0]
-            ],
-            [
-                np.where(self.kw_model.roles[1] == 0)[0][0],
-                np.where(self.kw_model.roles[1] == 1)[0][0],
-                np.where(self.kw_model.roles[1] == 2)[0][0]
-            ],
-            [
-                np.where(self.kw_model.roles[2] == 0)[0][0],
-                np.where(self.kw_model.roles[2] == 1)[0][0],
-                np.where(self.kw_model.roles[2] == 2)[0][0]
-            ]
-        ], dtype=int)
-
-        # Take object with absolute reference to give object relating to agent
-        #    (with 0: production good, 1: consumption good, 2: third object)
-
-        self.absolute_to_relative = absolute_to_relative_3_types[self.type]
-
-        # ----- RL PARAMETERS ---- #
-
-        self.alpha = self.agent_parameters["alpha"]
-        self.temp = self.agent_parameters["temp"]
+        assert self.kw_model == ModelA, "Must be 'Model A'."
+        assert 0 < self.storing_costs[0] < self.storing_costs[1] < self.storing_costs[2], "Must be 'Economy A'."
 
     # ------------------------ SURCHARGED METHODS ------------------------------------------------------ #
 
-    def are_you_satisfied(self, proposed_object, type_of_other_agent, propositions):
-        self.select_strategy()
-        agreeing = self.strategies[self.followed_strategy,
-                                   self.absolute_to_relative[self.in_hand],
-                                   self.absolute_to_relative[proposed_object]]
+    def are_you_satisfied(self, proposed_object, type_of_other_agent, proportions):
 
-        return agreeing
+        if type_of_other_agent == self.type:
+            return 0
+        elif proposed_object == self.P:
+            return 0
+        elif proposed_object == self.C:
+            return 1
 
-    def consume(self):
-        # Call 'consume' method from parent (that is 'Agent')
-        super().consume()
+        elif proposed_object == self.T:
+            if self.type == 1:
+                return 1
+            elif self.type == 2:
+                return 0
+            else:
+                # P 300 of Duffy's Learning to Speculate
+                cond = (self.storing_costs[2] - self.storing_costs[1]) > \
+                    (proportions[2, 0] - (1-proportions[1, 2])) / 3 * self.beta * self.u
+                if cond:
+                    print("ijdeijidneirn f")
+                    return 0
+                else:
+                    return 1
 
-        # In more, compute utility and learn something from results
-        self.compute_utility()
-        self.learn()
 
-    # ------------------------ RL PART ------------------------------------------------------ #
+def main():
 
-    def compute_utility(self):
-        self.utility = \
-            0.5 + self.consumption / 2 - self.storing_costs[self.in_hand]
+    parameters = {
+        "t_max": 200,
+        "agent_parameters": {"beta": 0.9, "u": 100},
+        "role_repartition": np.array([500, 500, 500]),
+        "storing_costs": np.array([0.01, 0.04, 0.09]),
+        "kw_model": ModelA,
+        "agent_model": KwAgent,
+    }
 
-        # Be sure that utility lies between 0 and 1
-        assert 0 <= self.utility <= 1
+    backup = \
+        launch(
+            **parameters
+        )
 
-    def learn(self):
-        # 'Classic' RL rule
-        self.strategies_values[self.followed_strategy] += \
-            self.alpha * (self.utility - self.strategies_values[self.followed_strategy])
+    represent_results(backup=backup, parameters=parameters)
 
-    def select_strategy(self):
-        # Obtain probability of using this or that strategy by a softmax,
-        # and then select a strategy according to these probabilities
-        p_values = softmax(self.strategies_values, self.temp)
-        self.followed_strategy = np.random.choice(np.arange(len(self.strategies_values)), p=p_values)
+
+
+if __name__ == "__main__":
+
+    main()

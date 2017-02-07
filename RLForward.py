@@ -2,8 +2,7 @@ import numpy as np
 from KWModels import ModelA
 from Economy import launch
 from analysis import represent_results
-
-from AbstractClasses import Agent
+from AbstractAgent import Agent
 from module.useful_functions import softmax
 
 

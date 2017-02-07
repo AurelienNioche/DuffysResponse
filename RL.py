@@ -1,6 +1,9 @@
 import numpy as np
-from AbstractClasses import Agent
+from AbstractAgent import Agent
+from KWModels import ModelA
 from module.useful_functions import softmax
+from Economy import launch
+from analysis import represent_results
 
 
 '''
@@ -108,10 +111,11 @@ class RLAgent(Agent):
     def compute_utility(self):
 
         self.utility = \
-            0.5 + self.consumption / 2 - self.storing_costs[self.in_hand]
+            self.consumption - self.storing_costs[self.in_hand]
 
+        # Maybe we want that to be bounded between 0 and 1 with something like 0.5 + consumption/2 - storing cost
         # Be sure that utility lies between 0 and 1
-        assert 0 <= self.utility <= 1
+        # assert 0 <= self.utility <= 1
 
     def learn(self):
 
@@ -125,3 +129,28 @@ class RLAgent(Agent):
         # and then select a strategy according to these probabilities
         p_values = softmax(self.strategies_values, self.temp)
         self.followed_strategy = np.random.choice(np.arange(len(self.strategies_values)), p=p_values)
+
+
+def main():
+
+    parameters = {
+        "t_max": 500,
+        "agent_parameters": {"alpha": 0.5, "temp": 0.01},
+        "role_repartition": np.array([500, 500, 500]),
+        "storing_costs": np.array([0.01, 0.04, 0.05]),
+        "kw_model": ModelA,
+        "agent_model": RLAgent,
+    }
+
+    backup = \
+        launch(
+            **parameters
+        )
+
+    represent_results(backup=backup, parameters=parameters)
+
+
+if __name__ == "__main__":
+
+    main()
+
