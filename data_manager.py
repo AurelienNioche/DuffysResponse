@@ -9,7 +9,7 @@ def import_data():
     data = []
     if not path.exists(data_file):
 
-        print("Loading data from csv file...")
+        print("Loading data from CSV file...")
 
         headers = []
 
@@ -34,14 +34,14 @@ def import_data():
         Session, realNumber = 1, 1
 
         d = {
-            "own_good": [],
+            "subject_good": [],
             "partner_type": [],
             "partner_good": [],
-            "own_choice": [],
+            "subject_choice": [],
             "partner_choice": [],
             "prop": [],
-            "reward": [],
-            "cost": []
+            "u": [],
+            "c": []
         }
 
         for row_idx in range(len(data)):
@@ -58,20 +58,20 @@ def import_data():
                 for key in d.keys():
                     d[key] = []
 
-            d["own_good"].append(
-                data[row_idx]["startGood"]
+            d["subject_good"].append(
+                int(data[row_idx]["startGood"] - 1)
             )
             d["partner_type"].append(
-                data[row_idx]["partnersType"]
+                int(data[row_idx]["partnersType"] - 1)
             )
             d["partner_good"].append(
-                data[row_idx]["proposedGood"]
+                int(data[row_idx]["proposedGood"] - 1)
             )
-            d["own_choice"].append(
-                data[row_idx]["willToExchange"]
+            d["subject_choice"].append(
+                int(data[row_idx]["willToExchange"])
             )
             d["partner_choice"].append(
-                data[row_idx]["partnersWillToExchange"]
+                int(data[row_idx]["partnersWillToExchange"])
             )
             d["prop"].append(
                 [
@@ -80,18 +80,18 @@ def import_data():
                     data[row_idx]["prop_pMagenta_gCyan"]
                 ]
             )
-            d["reward"].append(
-                data[row_idx]["currentConsumption"]
+            d["u"].append(
+                int(data[row_idx]["currentConsumption"])
             )
-            d["cost"].append(
-                data[row_idx]["currentCost"]
+            d["c"].append(
+                int(data[row_idx]["currentCost"])
             )
 
         np.save(data_file, clean_data)
 
     else:
 
-        print("Loading data from npy file...")
+        print("Loading data from NPY file...")
 
         clean_data = np.load(data_file)
 
