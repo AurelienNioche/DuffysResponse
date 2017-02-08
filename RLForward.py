@@ -70,7 +70,7 @@ class RLForwardAgent(Agent):
                 for k in [self.kw_model.roles[j][0], self.kw_model.roles[j][2]]:
 
                     # Key is composed by good in hand, partner type, good in partner's hand
-                    strategies[(i, j, k)] = intitial_values[idx]
+                    strategies[(i, j, k)] = intitial_values[idx][:]
 
                     idx += 1
 
@@ -83,7 +83,7 @@ class RLForwardAgent(Agent):
 
         # You find that strange? We don't care. (F*** you if you do).
         utility = \
-            self.u - self.consumption - self.storing_costs[self.in_hand]
+            self.u*self.consumption - self.storing_costs[self.in_hand]
 
         # Be sure that utility lies between 0 and 1
         # assert 0 <= utility <= 1
@@ -122,7 +122,9 @@ class RLForwardAgent(Agent):
     
     def probability_of_responding(self, subject_response, partner_good, partner_type):
 
+        print(subject_response, partner_good, partner_type)
         relevant_strategies_values = self.strategies[(self.in_hand, partner_type, partner_good)]
+        print(relevant_strategies_values)
         p_values = softmax(relevant_strategies_values, self.temp)
         
         # Assume there is only 2 p-values, return the one corresponding to the choice of the subject

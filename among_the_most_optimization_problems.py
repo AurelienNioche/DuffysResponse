@@ -11,5 +11,5 @@ def fun(*args):
     return x**2 + y*x
 
 
-print(op.minimize(fun=fun, x0=np.array([10**4, 10**3]), bounds=[(-np.inf, np.inf), ] * 2))
+print(op.minimize(fun=fun, x0=np.array([0, 0]), bounds=[(-10, 10), ] * 2))
 
