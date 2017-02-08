@@ -6,11 +6,6 @@ from AbstractAgent import Agent
 from module.useful_functions import softmax
 
 
-''''
-!!!!!!! WORK IN PROGRESS !!!!!!!!!!!
-'''
-
-
 class BayesianAgent(Agent):
     name = "BayesianAgent"
 
