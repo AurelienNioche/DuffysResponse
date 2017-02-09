@@ -18,8 +18,8 @@ class DuffyAgent(Agent):
 
         # Let gamma[0] be gamma_{i+1} and gamma[1] be gamma_{i+2}
         self.gamma = np.array([
-            - self.storing_costs[self.P] + self.agent_parameters["beta"] * self.agent_parameters["u"],
-            - self.storing_costs[self.T] + self.agent_parameters["beta"] * self.agent_parameters["u"]
+            - self.storing_costs[self.P] + self.beta * self.u,
+            - self.storing_costs[self.T] + self.beta * self.u
         ])
 
         self.in_hand_at_the_beginning_of_the_round = self.P
@@ -57,6 +57,33 @@ class DuffyAgent(Agent):
         elif self.in_hand_at_the_beginning_of_the_round == self.T:
 
             self.values[1] += self.consumption * self.gamma[1] - (1-self.consumption) * self.gamma[0]
+
+            # ----------  FOR OPTIMIZATION PART ---------- #
+
+    def probability_of_responding(self, subject_response, partner_good):
+
+        self.in_hand_at_the_beginning_of_the_round = self.in_hand
+
+        if partner_good == self.C:
+            p_values = [0, 1]  # Accept for sure
+
+        elif self.in_hand == self.P and partner_good == self.T:
+
+            x = self.values[0] - self.values[1]
+            p_refusing = np.exp(x) / (1 + np.exp(x))
+            p_values = [p_refusing, 1 - p_refusing]
+
+        else:
+            p_values = [1, 0]
+
+        return p_values[subject_response]
+
+    def do_the_encounter(self, subject_choice, partner_choice, partner_good):
+
+        if subject_choice and partner_choice:
+            self.in_hand = partner_good
+
+        self.consume()
 
 
 def main():

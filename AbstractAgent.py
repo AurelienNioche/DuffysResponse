@@ -11,7 +11,8 @@ class Agent(object):
     """
     name = "Stupid agent"
 
-    def __init__(self, prod, cons, third, agent_parameters, storing_costs, u, kw_model=ModelA, idx=None):
+    def __init__(self, prod, cons, third, storing_costs, u,  beta=0.9,
+                 agent_parameters=None, kw_model=ModelA, idx=None):
 
         # Production object (integer in [0, 1, 2])
         self.P = prod
@@ -31,6 +32,7 @@ class Agent(object):
         # Storing costs (numpy array of size 3) and utility derived from consumption
         self.storing_costs = np.asarray(storing_costs)
         self.u = u
+        self.beta = beta
 
         # Keep a trace for time t if the agent consumed or not.
         self.consumption = 0
