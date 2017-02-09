@@ -79,12 +79,29 @@ class RLAgent(Agent):
         # Take object with absolute reference to give object relating to agent
         #    (with 0: production good, 1: consumption good, 2: third object)
 
-        self.absolute_to_relative = absolute_to_relative_3_types[self.type]
+        self.absolute_to_relative = absolute_to_relative_3_types[self.C]
 
         # ----- RL PARAMETERS ---- #
 
         self.alpha = self.agent_parameters["alpha"]
         self.temp = self.agent_parameters["temp"]
+
+        self.strategies_values = self.agent_parameters["strategy_values"]
+
+        self.u, self.storing_costs = self.define_u_and_storing_costs(self.u, self.storing_costs)
+
+    @staticmethod
+    def define_u_and_storing_costs(u, storing_costs):
+
+        # To be sure that q values will be remained between 0 and 1.
+        amplitude = u - min(storing_costs) + max(storing_costs)
+
+        new_storing_costs = np.zeros(3)
+        new_storing_costs[:] = storing_costs[:] / amplitude
+
+        new_u = u/amplitude
+
+        return new_u, new_storing_costs
 
     # ------------------------ SURCHARGED METHODS ------------------------------------------------------ #
 
@@ -130,6 +147,45 @@ class RLAgent(Agent):
         p_values = softmax(self.strategies_values, self.temp)
         self.followed_strategy = np.random.choice(np.arange(len(self.strategies_values)), p=p_values)
 
+    # ---------- OPTIMIZATION PART ---------- #
+
+    def probability_of_responding(self, subject_response, partner_good):
+
+        compatible = self.strategies[:,
+                self.absolute_to_relative[self.in_hand],
+                self.absolute_to_relative[partner_good]
+            ] == subject_response
+
+        p_values = softmax(self.strategies_values, self.temp)
+        return sum(p_values[compatible])
+
+    def do_the_encounter(self, subject_choice, partner_choice, partner_good):
+
+        self.followed_strategy = subject_choice
+
+        if subject_choice and partner_choice:
+            self.in_hand = partner_good
+
+        self.consume()  # Include learning in this model
+
+
+def test_agent():
+
+    a = RLAgent(
+        prod=1,
+        cons=0,
+        third=2,
+        agent_parameters={
+            "alpha": 0.5,
+            "temp": 0.5,
+            "strategy_values": np.zeros(4)
+        },
+        storing_costs=np.array([1, 4, 9]),
+        u=100
+    )
+
+    a.probability_of_responding(subject_response=1, partner_good=0)
+
 
 def main():
 
@@ -137,9 +193,10 @@ def main():
         "t_max": 500,
         "agent_parameters": {"alpha": 0.5, "temp": 0.01},
         "role_repartition": np.array([500, 500, 500]),
-        "storing_costs": np.array([0.01, 0.04, 0.05]),
+        "storing_costs": np.array([1, 4, 9]),
+        "u": 100,
         "kw_model": ModelA,
-        "agent_model": RLAgent,
+        "agent_model": RLAgent
     }
 
     backup = \
@@ -152,5 +209,5 @@ def main():
 
 if __name__ == "__main__":
 
-    main()
+    test_agent()
 

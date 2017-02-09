@@ -25,19 +25,13 @@ class RLForwardAgent(Agent):
         self.gamma = self.agent_parameters["gamma"]
         self.temp = self.agent_parameters["temp"]
 
-        if "initial_values" in self.agent_parameters:
-            initial_values = self.agent_parameters["initial_values"]
-
-        else:
-            initial_values = np.zeros((12, 2))
-
         # Memory of the matching
         self.matching_triplet = (-1, -1, -1)
 
         # ------- STRATEGIES ------- #
-        self.strategies = self.generate_strategies(initial_values)
+        self.strategies = self.generate_strategies(self.agent_parameters["q_values"])
 
-        self.u, self.storing_costs = self.define_u_and_storing_costs(self.agent_parameters["u"], self.storing_costs)
+        self.u, self.storing_costs = self.define_u_and_storing_costs(self.u, self.storing_costs)
 
         self.followed_strategy = None
 
@@ -129,7 +123,7 @@ class RLForwardAgent(Agent):
         # Memory for learning
         self.matching_triplet = self.in_hand, partner_type, partner_good
 
-    # ----------  FOR FITTING ---------- #
+    # ----------  FOR OPTIMIZATION PART ---------- #
     
     def probability_of_responding(self, subject_response, partner_good, partner_type):
 
@@ -157,7 +151,8 @@ def main():
 
     parameters = {
         "t_max": 200,
-        "agent_parameters": {"alpha": 0.25, "temp": 0.01, "gamma": 0.5},
+        "agent_parameters": {"alpha": 0.25, "temp": 0.01, "gamma": 0.5,
+                             "initial_values": np.random.random((12, 2))},
         "role_repartition": np.array([5000, 5000, 5000]),
         "storing_costs": np.array([0.01, 0.04, 0.09]),
         "kw_model": ModelA,
@@ -174,4 +169,4 @@ def main():
 
 if __name__ == "__main__":
 
-    test_tamere()
+    main()
