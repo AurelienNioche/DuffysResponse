@@ -95,6 +95,8 @@ def import_data():
 
         clean_data = np.load(data_file)
 
+    print("Data loaded.")
+
     return clean_data
 
 

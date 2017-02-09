@@ -24,11 +24,6 @@ class RLForwardAgent(Agent):
         self.alpha = self.agent_parameters["alpha"]
         self.gamma = self.agent_parameters["gamma"]
         self.temp = self.agent_parameters["temp"]
-        
-        if "u" in self.agent_parameters:
-            self.u = self.agent_parameters["u"]
-        else:
-            self.u = 1
 
         if "initial_values" in self.agent_parameters:
             initial_values = self.agent_parameters["initial_values"]
@@ -41,6 +36,8 @@ class RLForwardAgent(Agent):
 
         # ------- STRATEGIES ------- #
         self.strategies = self.generate_strategies(initial_values)
+
+        self.u, self.storing_costs = self.define_u_and_storing_costs(self.agent_parameters["u"], self.storing_costs)
 
         self.followed_strategy = None
 
@@ -79,33 +76,47 @@ class RLForwardAgent(Agent):
 
         return strategies
 
+    @staticmethod
+    def define_u_and_storing_costs(u, storing_costs):
+
+        # To be sure that q values will be remained between 0 and 1.
+        amplitude = u - min(storing_costs) + max(storing_costs)
+
+        new_storing_costs = np.zeros(3)
+        new_storing_costs[:] = storing_costs[:] / amplitude
+
+        new_u = u/amplitude
+
+        return new_u, new_storing_costs
+
     def compute_utility(self):
 
-        # You find that strange? We don't care. (F*** you if you do).
+        # Be sure that utility can not be over 1 or under 1.
+
+        # Anchorage is at the maximum of the storing costs so the worst option leads to a utility of 0.
         utility = \
-            self.u*self.consumption - self.storing_costs[self.in_hand]
+            max(self.storing_costs) + self.u * self.consumption - self.storing_costs[self.in_hand]
 
         # Be sure that utility lies between 0 and 1
-        # assert 0 <= utility <= 1
+        assert 0 <= utility <= 1
 
         return utility
 
     def learn(self, partner_good, partner_type):
 
         # Matching triplet is the matching triplet of t - 1
-
         delta = self.compute_utility() - self.strategies[self.matching_triplet][self.followed_strategy]
 
-        if not self.consumption:
-            forward_value = max(self.strategies[(self.in_hand, partner_type, partner_good)])
-        else:
-            forward_value = 0
-
         self.strategies[self.matching_triplet][self.followed_strategy] += \
-            self.alpha * (
-                delta
-                + self.gamma * forward_value
-            )
+            self.alpha * delta
+
+        if not self.consumption:
+
+            forward_value = max(self.strategies[(self.in_hand, partner_type, partner_good)]) \
+                - self.strategies[self.matching_triplet][self.followed_strategy]
+
+            self.strategies[self.matching_triplet][self.followed_strategy] += \
+                self.gamma * forward_value
 
     def select_strategy(self, partner_good, partner_type):
 
@@ -122,9 +133,7 @@ class RLForwardAgent(Agent):
     
     def probability_of_responding(self, subject_response, partner_good, partner_type):
 
-        print(subject_response, partner_good, partner_type)
         relevant_strategies_values = self.strategies[(self.in_hand, partner_type, partner_good)]
-        print(relevant_strategies_values)
         p_values = softmax(relevant_strategies_values, self.temp)
         
         # Assume there is only 2 p-values, return the one corresponding to the choice of the subject
@@ -134,6 +143,8 @@ class RLForwardAgent(Agent):
 
         # Memory for learning
         self.matching_triplet = self.in_hand, partner_type, partner_good
+
+        self.followed_strategy = subject_choice
         
         if subject_choice and partner_choice:
             
@@ -142,7 +153,7 @@ class RLForwardAgent(Agent):
         self.consume()
 
 
-if __name__ == "__main__":
+def main():
 
     parameters = {
         "t_max": 200,
@@ -159,3 +170,8 @@ if __name__ == "__main__":
         )
 
     represent_results(backup=backup, parameters=parameters)
+
+
+if __name__ == "__main__":
+
+    test_tamere()

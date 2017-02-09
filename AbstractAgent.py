@@ -32,7 +32,7 @@ class Agent(object):
         self.agent_parameters = agent_parameters
 
         # Storing costs (numpy array of size 3)
-        self.storing_costs = storing_costs
+        self.storing_costs = np.asarray(storing_costs)
 
         # Keep a trace for time t if the agent consumed or not.
         self.consumption = 0
