@@ -30,8 +30,12 @@ class PerformanceComputer(object):
 
         self.func = {
             "RLForward": self.get_FRL_model,
-            "RLStrategic": self.get_SRL_model
+            "RLStrategic": self.get_SRL_model,
+            "NonParametrizedAgent": self.get_non_parametrized_model,
         }
+
+        self.non_parametrized_model = {"TotalGogol": TotalGogol, "StupidAgent": StupidAgent,
+                      "Duffy": DuffyAgent, "KW": KwAgent}
 
     def run(self, *args):
 
@@ -63,8 +67,13 @@ class PerformanceComputer(object):
 
     def get_SRL_model(self, *args):
 
-        alpha, temp = args[0][:2]
-        strategy_values = np.asarray(args[0][2:])
+        try:
+
+            alpha, temp = args[0][:2]
+            strategy_values = np.asarray(args[0][2:])
+        except:
+            print(args)
+            raise Exception
 
         model = RLStrategicAgent(
             prod=self.prod,
@@ -78,6 +87,21 @@ class PerformanceComputer(object):
                 "strategy_values": strategy_values,
             }
         )
+
+        return model
+
+    def get_non_parametrized_model(self, args):
+
+        model_name = args[0][0]
+
+        model = self.non_parametrized_model[model_name](
+                prod=self.prod,
+                cons=self.cons,  # Suppose we are in the KW's Model A
+                third=self.third,
+                storing_costs=self.raw_storing_costs,
+                u=self.raw_u,
+                beta=self.beta
+            )
 
         return model
 
@@ -111,19 +135,34 @@ class PerformanceComputer(object):
         result = - sum(log_likelihood_list)
         return result
 
+    def evaluate(self, *args):
+
+        neg_ll_sum = self.run(args)
+        ll_sum = neg_ll_sum * (- 1)
+
+        if "NonParametrizedAgent" in args:
+            degrees_of_freedom = 0
+        else:
+            degrees_of_freedom = len(args)
+
+        return ll_sum, self.bic_formula(max_log_likelihood=ll_sum,
+                                        n_trials=self.t_max, degrees_of_freedom=degrees_of_freedom)
+
+    @staticmethod
+    def bic_formula(max_log_likelihood, n_trials, degrees_of_freedom):
+
+        return - 2 * max_log_likelihood + np.log(n_trials) * degrees_of_freedom
+
 
 class Optimizer(object):
 
-    def __init__(self, storing_costs, u, beta, subjects_idx, data):
+    def __init__(self, subjects_idx, data):
 
-        self.storing_costs = storing_costs
-        self.u = u
-        self.beta = beta
         self.subjects_idx = subjects_idx
         self.data = data
         
         self.random_evaluations = 250
-        self.max_evaluations = 1000
+        self.max_evaluations = 100
 
         self.optimize_model = {
             "RLForward": self.run_forward_RL,
@@ -174,16 +213,8 @@ class Optimizer(object):
 
             best = self.optimize_for_a_single_subject[model](i)
 
-            max_log_likelihood = \
+            max_log_likelihood, bic_value = \
                 self.evaluate_performance(ind=i, model=model, args=[best[i] for i in parameters])
-
-            n_trials = len(self.data[i]["subject_good"])
-            degrees_of_freedom = len(parameters)
-
-            bic_value = \
-                self.bic(max_log_likelihood=max_log_likelihood,
-                         n_trials=n_trials,
-                         degrees_of_freedom=degrees_of_freedom)
 
             # Put results in backup dic
 
@@ -202,12 +233,7 @@ class Optimizer(object):
         pc = PerformanceComputer(
             individual_data=self.data[ind],
             model=model)
-        neg_ll_sum = pc.run(args)
-        return neg_ll_sum * (- 1)
-
-    def bic(self, max_log_likelihood, n_trials, degrees_of_freedom):
-
-        return - 2 * max_log_likelihood + np.log(n_trials) * degrees_of_freedom
+        return pc.evaluate(*args)
 
     # --------------------- RLForward ------------------------------ #
 
@@ -293,67 +319,26 @@ class Optimizer(object):
 
 class PerformanceComputerWithoutParameters(object):
 
-    def __init__(self, data, subjects_idx, storing_costs, u, beta):
+    def __init__(self, data, subjects_idx):
 
         self.data = data
         self.subjects_idx = subjects_idx
-        self.storing_costs = storing_costs
-        self.u = u
-        self.beta = beta
-
-        self.model = {"TotalGogol": TotalGogol, "StupidAgent": StupidAgent,
-                      "Duffy": DuffyAgent, "KW": KwAgent}
 
     def run(self, model):
 
         print("Evaluating performance of {}...".format(model))
 
-        model = self.model[model]
-        max_sum_ll = []
+        sum_ll_list = []
+        bic_list = []
 
         for i in self.subjects_idx:
+            p = PerformanceComputer(individual_data=self.data[i], model="NonParametrizedAgent")
+            neg_sum_ll, bic = p.evaluate((model, ))
 
-            t_max = len(self.data[i]["subject_good"])
+            sum_ll_list.append(neg_sum_ll * -1)
+            bic_list.append(bic)
 
-            a = model(
-                prod=self.data[i]["subject_good"][0],
-                cons=(self.data[i]["subject_good"][0] - 1) % 3,  # Suppose we are in the KW's Model A
-                third=(self.data[i]["subject_good"][0] - 2) % 3,
-                storing_costs=self.storing_costs,
-                u=self.u,
-                beta=self.beta
-            )
-
-            log_likelihood_list = []
-
-            for t in range(t_max):
-
-                a.match_departure_good(subject_good=self.data[i]["subject_good"][0])
-
-                likelihood = a.probability_of_responding(
-                    subject_response=self.data[i]["subject_choice"][t],
-                    partner_good=self.data[i]["partner_good"][t],
-                    partner_type=self.data[i]["partner_type"][t],
-                    proportions=self.data[i]["prop"][t]
-                )
-
-                if likelihood > 0:
-                    perf = np.log(likelihood)
-                else:
-                    perf = np.log(0.001)  # To avoid log(0). We could have a best idea. Maybe.
-                    # We could interpret this as the probability of making a stupid error
-                log_likelihood_list.append(perf)
-
-                a.do_the_encounter(partner_choice=self.data[i]["partner_choice"][t],
-                                   partner_good=self.data[i]["partner_good"][t],
-                                   subject_choice=self.data[i]["subject_choice"][t],
-                                   partner_type=self.data[i]["partner_type"][t])
-
-            max_sum_ll.append(sum(log_likelihood_list))
-
-        bic = - 2 * np.asarray(max_sum_ll)
-
-        results = {"max_log_likelihood": max_sum_ll, "bic": bic}
+        results = {"max_log_likelihood": sum_ll_list, "bic": bic_list}
 
         print('Done!')
         print()
@@ -365,10 +350,6 @@ class ModelComparison(object):
 
     def __init__(self):
 
-        self.storing_costs = np.asarray([1, 4, 9])
-        self.u = 100
-        self.beta = 0.9
-
         self.subjects_idx = np.arange(30)
 
         self.data = import_data()
@@ -378,9 +359,6 @@ class ModelComparison(object):
     def run(self):
 
         general_parameters = {
-            "storing_costs": self.storing_costs,
-            "u": self.u,
-            "beta": self.beta,
             "subjects_idx": self.subjects_idx,
             "data": self.data
         }

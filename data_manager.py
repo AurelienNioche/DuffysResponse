@@ -38,6 +38,7 @@ def format_data(csv_data):
         "partner_good",
         "subject_choice",
         "partner_choice",
+        "partner_type",
         "prop",
         "u",
         "storing_costs"
@@ -60,8 +61,16 @@ def format_data(csv_data):
             d["u"] = max(d["u"])
             d["beta"] = 0.9
 
+            c = sorted(np.unique(d["storing_costs"]))
+            if len(c) < 3:
+                if 4 in c:
+                    c = [1, 4, 9]
+                else:
+                    c = [1, 3, 9]
+
+            assert c[0] < c[1] < c[2], c
             # Keep only the 3 storing costs and not the history of the costs
-            d["storing_costs"] = sorted(np.unique(d["storing_costs"]))
+            d["storing_costs"] = c
 
             clean_data.append(d.copy())
 
@@ -113,11 +122,12 @@ def import_from_csv_file(csv_file):
 def import_data(force=False):
 
     npy_file = "../GermainData.npy"
+    csv_file = "../lts_merged_2016.csv"
 
     if not path.exists(npy_file) or force:
 
         print("Loading data from CSV file...")
-        data = import_from_csv_file(np)
+        data = import_from_csv_file(csv_file=csv_file)
         np.save(npy_file, data)
 
     else:
