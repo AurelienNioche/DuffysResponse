@@ -4,6 +4,7 @@ from Economy import Economy
 from analysis import represent_results
 from AbstractAgent import Agent
 from module.useful_functions import softmax
+from save import save
 
 
 '''
@@ -155,7 +156,7 @@ def main():
     u = 1
 
     parameters = {
-        "t_max": 500,
+        "t_max": 20,
         "agent_parameters": {"alpha": 0.005, "temp": 0.1, "gamma": 0.9,
                              "q_values": np.random.random((12, 2))},
         "role_repartition": np.array([500, 500, 500]),
@@ -169,13 +170,9 @@ def main():
 
     backup = e.play()
 
-    for i, agent in enumerate(e.agents):
+    backup["last_strategies"] = [agent.strategies for agent in e.agents]
 
-        print("Agent {}".format(i))
-        for key, value in agent.strategies.items():
-            print("{} {:.2f}, {:.2f}".format(key, value[0], value[1]))
-
-        print()
+    save(backup)
 
     represent_results(backup=backup, parameters=parameters)
 
