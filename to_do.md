@@ -13,16 +13,19 @@
 
 * Total Gogol Imitator (c).
 
+* General Super Agent (bayesian / neural network)
+
 ### On existing models
 
 * For FRL (Forward RL): reduce number of free parameters (merging parameters for initial q values)
 
-## Economic structure
+## Economic Structure
 
 * Make heterogeneous economies (different type of agents)
 
+* Optional: 5 types economy
 
-## Back up
+## Back Up
 
 * Keep track of agent choice, agent good, partner choice, partner type, partner good (same as exp)
 
@@ -50,12 +53,31 @@ if level of speculation is the same.
 
 ### Artificial economies
 
-* Only pure KW can achieve teh speculative equilibrium
+* Only pure KW can achieve the speculative equilibrium
 
 ## Experimental 
+
+### Code
 
 * Code Germain's task in Python
 
 * Recode Aurelien's one for implementing KW instead of Iwai
 
-*  Design the experiment
+### Design the "new" experiment
+
+* Automation: 24 to 480+ agents
+
+* Cost and Utility structure: 1, 4, 9, 100 (more than one condition or not?)
+
+* Beta implementation: beta=0.99 (On the interest of having many blocks?)
+
+* Available Information: with and without
+
+* Keep the wallet
+
+* Choice confirmation?
+
+* Change Color of goods
+
+* 
+
