@@ -120,19 +120,36 @@ def plot_exchanges_acceptation_of_third_good(exchanges_list, mean_utility_list,
     ax.set_title("Parameters")
     ax.axis('off')
 
-    msg = \
-        "KW Model: {}; \n \n" \
-        "Agent model: {}; \n \n" \
-        "Agent parameters: {}; \n \n" \
-        "Role repartition: {}; \n \n " \
-        "Trials: {}. \n \n" \
-            .format(
-            parameters["kw_model"].name,
-            parameters["agent_model"].name,
-            parameters["agent_parameters"],
-            parameters["role_repartition"],
-            parameters["t_max"]
-        )
+    if "agent_parameters" in parameters:
+
+        msg = \
+            "KW Model: {}; \n \n" \
+            "Agent model: {}; \n \n" \
+            "Agent parameters: {}; \n \n" \
+            "Role repartition: {}; \n \n " \
+            "Trials: {}. \n \n" \
+                .format(
+                parameters["kw_model"].name,
+                parameters["agent_model"].name,
+                parameters["agent_parameters"],
+                parameters["role_repartition"],
+                parameters["t_max"]
+            )
+    else:
+
+        msg = \
+            "KW Model: {}; \n \n" \
+            "Agent model: {}; \n \n" \
+            "Role repartition: {}; \n \n " \
+            "Trials: {}. \n \n" \
+                .format(
+                parameters["kw_model"].name,
+                parameters["agent_model"].name,
+                parameters["role_repartition"],
+                parameters["t_max"]
+            )
+
+
 
     ax.text(0.5, 0.5, msg, ha='center', va='center', size=12)
 

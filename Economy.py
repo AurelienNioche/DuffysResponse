@@ -5,16 +5,18 @@ from KWModels import ModelA
 
 class Economy(object):
 
-    def __init__(self, role_repartition, t_max, storing_costs, agent_model,
+    def __init__(self, role_repartition, t_max, storing_costs, agent_model, u=100, beta=0.9,
                  agent_parameters=None, kw_model=ModelA):
 
         self.t_max = t_max
 
         self.agent_parameters = agent_parameters
 
-        self.role_repartition = role_repartition
+        self.role_repartition = np.asarray(role_repartition)
 
         self.storing_costs = storing_costs
+        self.u = u
+        self.beta = beta
 
         self.n_agent = sum(role_repartition)
 
@@ -37,9 +39,8 @@ class Economy(object):
             for ind in range(n):
                 a = self.agent_model(
                     agent_parameters=self.agent_parameters,
-                    prod=i, cons=j, third=k,
+                    prod=i, cons=j, third=k, u=self.u, beta=self.beta,
                     storing_costs=self.storing_costs,
-                    agent_type=agent_type,
                     idx=agent_idx)
 
                 agents.append(a)
@@ -78,7 +79,7 @@ class Economy(object):
             proportions = np.zeros((3, 3))
             for i in self.agents:
 
-                proportions[i.type, i.in_hand] += 1
+                proportions[i.C, i.in_hand] += 1  # Type of agent is his consumption good
 
             proportions[:] = proportions / (self.n_agent // 3)
 
@@ -94,16 +95,17 @@ class Economy(object):
                 j_object = _[j].in_hand
 
                 # Each agent is "initiator' of an exchange during one period.
-                i_agreeing = _[i].are_you_satisfied(j_object, _[j].type, proportions)
-                j_agreeing = _[j].are_you_satisfied(i_object, _[i].type, proportions)
+                i_agreeing = _[i].are_you_satisfied(j_object, _[j].C, proportions)  # Type of agent
+                # is his consumption good
+                j_agreeing = _[j].are_you_satisfied(i_object, _[i].C, proportions)
 
                 # ---- STATS ------ #
                 # Consider particular case of offering third object
                 if j_object == _[i].T and i_object == _[i].P:
-                    proposition_of_third_object[_[i].type] += 1
+                    proposition_of_third_object[_[i].C] += 1
 
                 if i_object == _[j].T and j_object == _[j].P:
-                    proposition_of_third_object[_[j].type] += 1
+                    proposition_of_third_object[_[j].C] += 1
                 # ------------ #
 
                 # If both agents agree to exchange...
@@ -112,10 +114,10 @@ class Economy(object):
                     # ---- STATS ------ #
                     # Consider particular case of offering third object
                     if j_object == _[i].T and i_object == _[i].P:
-                        third_good_acceptance[_[i].type] += 1
+                        third_good_acceptance[_[i].C] += 1
 
                     if i_object == _[j].T and j_object == _[j].P:
-                        third_good_acceptance[_[j].type] += 1
+                        third_good_acceptance[_[j].C] += 1
                     # ------------ #
 
                     # ...exchange occurs

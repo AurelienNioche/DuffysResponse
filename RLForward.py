@@ -1,6 +1,6 @@
 import numpy as np
 from KWModels import ModelA
-from Economy import launch
+from Economy import Economy
 from analysis import represent_results
 from AbstractAgent import Agent
 from module.useful_functions import softmax
@@ -29,7 +29,7 @@ class RLForwardAgent(Agent):
         self.matching_triplet = (-1, -1, -1)
 
         # ------- STRATEGIES ------- #
-        self.strategies = self.generate_strategies(self.agent_parameters["q_values"])
+        self.strategies = self.generate_strategies(self.agent_parameters["q_values"].copy())
 
         self.u, self.storing_costs = self.define_u_and_storing_costs(self.u, self.storing_costs)
 
@@ -125,7 +125,7 @@ class RLForwardAgent(Agent):
 
     # ----------  FOR OPTIMIZATION PART ---------- #
     
-    def probability_of_responding(self, subject_response, partner_good, partner_type):
+    def probability_of_responding(self, subject_response, partner_good, partner_type, proportions):
 
         relevant_strategies_values = self.strategies[(self.in_hand, partner_type, partner_good)]
         p_values = softmax(relevant_strategies_values, self.temp)
@@ -149,20 +149,31 @@ class RLForwardAgent(Agent):
 
 def main():
 
+    storing_costs = np.array([0.01, 0.04, 0.09])
+    u = 1
+
     parameters = {
-        "t_max": 200,
-        "agent_parameters": {"alpha": 0.25, "temp": 0.01, "gamma": 0.5,
-                             "initial_values": np.random.random((12, 2))},
-        "role_repartition": np.array([5000, 5000, 5000]),
-        "storing_costs": np.array([0.01, 0.04, 0.09]),
+        "t_max": 500,
+        "agent_parameters": {"alpha": 0.005, "temp": 0.1, "gamma": 0.9,
+                             "q_values": np.random.random((12, 2))},
+        "role_repartition": np.array([500, 500, 500]),
+        "storing_costs": storing_costs,
+        "u": u,
         "kw_model": ModelA,
         "agent_model": RLForwardAgent,
     }
 
-    backup = \
-        launch(
-            **parameters
-        )
+    e = Economy(**parameters)
+
+    backup = e.play()
+
+    for i, agent in enumerate(e.agents):
+
+        print("Agent {}".format(i))
+        for key, value in agent.strategies.items():
+            print("{} {:.2f}, {:.2f}".format(key, value[0], value[1]))
+
+        print()
 
     represent_results(backup=backup, parameters=parameters)
 

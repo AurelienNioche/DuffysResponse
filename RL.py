@@ -149,7 +149,7 @@ class RLAgent(Agent):
 
     # ---------- OPTIMIZATION PART ---------- #
 
-    def probability_of_responding(self, subject_response, partner_good):
+    def probability_of_responding(self, subject_response, partner_good, partner_type, proportions):
 
         compatible = self.strategies[:,
                 self.absolute_to_relative[self.in_hand],
@@ -159,7 +159,7 @@ class RLAgent(Agent):
         p_values = softmax(self.strategies_values, self.temp)
         return sum(p_values[compatible])
 
-    def do_the_encounter(self, subject_choice, partner_choice, partner_good):
+    def do_the_encounter(self, subject_choice, partner_choice, partner_good, partner_type):
 
         self.followed_strategy = subject_choice
 

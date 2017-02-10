@@ -16,6 +16,8 @@ class DuffyAgent(Agent):
         # Let values[0] be the v_{i+1} and values[1] be v_{i+2}
         self.values = np.zeros(2)
 
+        self.u, self.storing_costs = self.define_u_and_storing_costs(self.u, self.storing_costs)
+
         # Let gamma[0] be gamma_{i+1} and gamma[1] be gamma_{i+2}
         self.gamma = np.array([
             - self.storing_costs[self.P] + self.beta * self.u,
@@ -23,6 +25,16 @@ class DuffyAgent(Agent):
         ])
 
         self.in_hand_at_the_beginning_of_the_round = self.P
+
+    @staticmethod
+    def define_u_and_storing_costs(u, storing_costs):
+
+        new_storing_costs = np.zeros(3)
+        new_storing_costs[:] = storing_costs[:] / u
+
+        new_u = 1
+
+        return new_u, new_storing_costs
 
     def are_you_satisfied(self, proposed_object, type_of_other_agent, proportions):
 
@@ -60,7 +72,7 @@ class DuffyAgent(Agent):
 
             # ----------  FOR OPTIMIZATION PART ---------- #
 
-    def probability_of_responding(self, subject_response, partner_good):
+    def probability_of_responding(self, subject_response, partner_good, partner_type, proportions):
 
         self.in_hand_at_the_beginning_of_the_round = self.in_hand
 
@@ -78,7 +90,7 @@ class DuffyAgent(Agent):
 
         return p_values[subject_response]
 
-    def do_the_encounter(self, subject_choice, partner_choice, partner_good):
+    def do_the_encounter(self, subject_choice, partner_choice, partner_good, partner_type):
 
         if subject_choice and partner_choice:
             self.in_hand = partner_good
@@ -90,9 +102,10 @@ def main():
 
     parameters = {
         "t_max": 500,
-        "agent_parameters": {"beta": 0.9, "u": 0.2},
-        "role_repartition": np.array([500, 500, 500]),
-        "storing_costs": np.array([0.01, 0.04, 0.09]),
+        "beta": 0.9,
+        "u": 100,
+        "role_repartition": [500, 500, 500],
+        "storing_costs": [1, 4, 9],
         "kw_model": ModelA,
         "agent_model": DuffyAgent,
     }

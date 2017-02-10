@@ -3,11 +3,11 @@ import numpy as np
 from os import path
 
 
-def import_data():
+def import_data(force=False):
 
     data_file = "../GermainData.npy"
     data = []
-    if not path.exists(data_file):
+    if not path.exists(data_file) or force:
 
         print("Loading data from CSV file...")
 
@@ -50,6 +50,7 @@ def import_data():
                     data[row_idx]["realNumber"] == realNumber:
                 pass
             else:
+                d["prop"] = np.asarray(d["prop"])
                 clean_data.append(d.copy())
 
                 Session = data[row_idx]["Session"]
@@ -103,7 +104,7 @@ def import_data():
 
 def main():
 
-    data = import_data()
+    data = import_data(force=True)
 
     print("N sujets", len(data))
 

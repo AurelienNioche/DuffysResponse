@@ -68,6 +68,28 @@ class Agent(object):
         else:
             self.exchange = False
 
+        # -------------- FITTING ------------------------- #
+
+    def match_departure_good(self, subject_good):
+
+        self.in_hand = subject_good
+
+    def probability_of_responding(self, subject_response, partner_good, partner_type, proportions):
+
+        if partner_good == self.C:
+            return subject_response == 1
+        else:
+            return 0.5
+
+    def do_the_encounter(self, subject_choice, partner_choice, partner_good, partner_type):
+
+        if subject_choice and partner_choice:
+
+            self.in_hand = partner_good
+
+            if self.in_hand == self.C:
+                    self.in_hand = self.P
+
 
 def main():
 

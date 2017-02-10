@@ -1,21 +1,24 @@
 import numpy as np
 import hyperopt as op
 import csv
+from tqdm import tqdm
 from data_manager import import_data
 from RLForward import RLForwardAgent
 from RL import RLAgent as RLStrategicAgent
 from stupidy_is_better import TotalGogol, StupidAgent
 from DuffyAgent import DuffyAgent
+from KwAgent import KwAgent
 
 
 class PerformanceComputer(object):
 
-    def __init__(self, individual_data, raw_storing_costs, raw_u, model):
+    def __init__(self, individual_data, raw_storing_costs, raw_u, beta, model):
 
         self.data = individual_data
 
         self.raw_storing_costs = raw_storing_costs
         self.raw_u = raw_u
+        self.beta = beta
 
         self.t_max = len(self.data["subject_good"])
 
@@ -41,6 +44,7 @@ class PerformanceComputer(object):
             cons=(self.data["subject_good"][0] - 1) % 3,  # Suppose we are in the KW's Model A
             third=(self.data["subject_good"][0] - 2) % 3,
             u=self.raw_u,
+            beta=self.beta,
             storing_costs=self.raw_storing_costs,
             agent_parameters={
                 "alpha": alpha,
@@ -52,18 +56,28 @@ class PerformanceComputer(object):
 
         log_likelihood_list = []
 
-        for i in range(self.t_max):
-            m.learn(partner_good=self.data["partner_good"][i], partner_type=self.data["partner_type"][i])
+        for t in range(self.t_max):
 
-            likelihood = m.probability_of_responding(subject_response=self.data["subject_choice"][i],
-                                                     partner_good=self.data["partner_good"][i],
-                                                     partner_type=self.data["partner_type"][i])
-            log_likelihood_list.append(np.log(likelihood))
+            m.match_departure_good(subject_good=self.data["subject_good"][t])
 
-            m.do_the_encounter(partner_choice=self.data["partner_choice"][i],
-                               partner_type=self.data["partner_type"][i],
-                               partner_good=self.data["partner_good"][i],
-                               subject_choice=self.data["subject_choice"][i])
+            m.learn(partner_good=self.data["partner_good"][t], partner_type=self.data["partner_type"][t])
+
+            likelihood = m.probability_of_responding(subject_response=self.data["subject_choice"][t],
+                                                     partner_good=self.data["partner_good"][t],
+                                                     partner_type=self.data["partner_type"][t],
+                                                     proportions=self.data["prop"][t])
+
+            if likelihood > 0:
+                perf = np.log(likelihood)
+            else:
+                perf = np.log(0.001)  # To avoid log(0). We could have a best idea. Maybe.
+                # We could interpret this as the probability of making a stupid error
+            log_likelihood_list.append(perf)
+
+            m.do_the_encounter(partner_choice=self.data["partner_choice"][t],
+                               partner_type=self.data["partner_type"][t],
+                               partner_good=self.data["partner_good"][t],
+                               subject_choice=self.data["subject_choice"][t])
 
         result = - sum(log_likelihood_list)
         return result
@@ -88,10 +102,14 @@ class PerformanceComputer(object):
 
         log_likelihood_list = []
 
-        for i in range(self.t_max):
+        for t in range(self.t_max):
 
-            likelihood = m.probability_of_responding(subject_response=self.data["subject_choice"][i],
-                                                     partner_good=self.data["partner_good"][i])
+            m.match_departure_good(subject_good=self.data["subject_good"][t])
+
+            likelihood = m.probability_of_responding(subject_response=self.data["subject_choice"][t],
+                                                     partner_good=self.data["partner_good"][t],
+                                                     partner_type=self.data["partner_type"][t],
+                                                     proportions=self.data["prop"][t])
 
             if likelihood > 0:
                 perf = np.log(likelihood)
@@ -100,9 +118,10 @@ class PerformanceComputer(object):
                 # We could interpret this as the probability of making a stupid error
             log_likelihood_list.append(perf)
 
-            m.do_the_encounter(partner_choice=self.data["partner_choice"][i],
-                               partner_good=self.data["partner_good"][i],
-                               subject_choice=self.data["subject_choice"][i])
+            m.do_the_encounter(partner_choice=self.data["partner_choice"][t],
+                               partner_good=self.data["partner_good"][t],
+                               subject_choice=self.data["subject_choice"][t],
+                               partner_type=self.data["partner_type"][t])
 
         result = - sum(log_likelihood_list)
         return result
@@ -110,15 +129,16 @@ class PerformanceComputer(object):
 
 class Optimizer(object):
 
-    def __init__(self, storing_costs, u, subjects_idx, data):
+    def __init__(self, storing_costs, u, beta, subjects_idx, data):
 
         self.storing_costs = storing_costs
         self.u = u
+        self.beta = beta
         self.subjects_idx = subjects_idx
         self.data = data
         
-        self.random_evaluations = 50
-        self.max_evaluations = 200
+        self.random_evaluations = 250
+        self.max_evaluations = 1000
 
         self.optimize_model = {
             "RLForward": self.run_forward_RL,
@@ -138,12 +158,11 @@ class Optimizer(object):
 
     def optimize(self, ind, model, search_space):
 
-        print("Optimizing for ind {} with {}...".format(ind, model))
-
         pc = PerformanceComputer(
             individual_data=self.data[ind],
             raw_storing_costs=self.storing_costs,
             raw_u=self.u,
+            beta=self.beta,
             model=model)
 
         alg = op.partial(op.tpe.suggest,  # bayesian optimization
@@ -155,9 +174,6 @@ class Optimizer(object):
             algo=alg,
             max_evals=self.max_evaluations)
 
-        print("Optimization done!")
-        print()
-
         return best
 
     def optimize_for_n_subjects(self, model, parameters):
@@ -167,9 +183,12 @@ class Optimizer(object):
         backup["bic"] = []
         backup["best"] = []
 
+        print("Optimizing with {}...".format(model))
+        print()
+
         # --- Optimize for selected individuals
 
-        for i in self.subjects_idx:
+        for i in tqdm(self.subjects_idx):
 
             best = self.optimize_for_a_single_subject[model](i)
 
@@ -190,6 +209,10 @@ class Optimizer(object):
             backup["bic"].append(bic_value)
             backup["best"].append(best)
 
+        print()
+        print("Optimization done!")
+        print()
+
         return backup
 
     def evaluate_performance(self, ind, model, args):
@@ -198,6 +221,7 @@ class Optimizer(object):
             individual_data=self.data[ind],
             raw_storing_costs=self.storing_costs,
             raw_u=self.u,
+            beta=self.beta,
             model=model)
         neg_ll_sum = pc.run(args)
         return neg_ll_sum * (- 1)
@@ -290,15 +314,16 @@ class Optimizer(object):
 
 class PerformanceComputerWithoutParameters(object):
 
-    def __init__(self, data, subjects_idx, storing_costs, u):
+    def __init__(self, data, subjects_idx, storing_costs, u, beta):
 
         self.data = data
         self.subjects_idx = subjects_idx
         self.storing_costs = storing_costs
         self.u = u
+        self.beta = beta
 
         self.model = {"TotalGogol": TotalGogol, "StupidAgent": StupidAgent,
-                      "Duffy": DuffyAgent}
+                      "Duffy": DuffyAgent, "KW": KwAgent}
 
     def run(self, model):
 
@@ -316,16 +341,21 @@ class PerformanceComputerWithoutParameters(object):
                 cons=(self.data[i]["subject_good"][0] - 1) % 3,  # Suppose we are in the KW's Model A
                 third=(self.data[i]["subject_good"][0] - 2) % 3,
                 storing_costs=self.storing_costs,
-                u=self.u
+                u=self.u,
+                beta=self.beta
             )
 
             log_likelihood_list = []
 
             for t in range(t_max):
 
+                a.match_departure_good(subject_good=self.data[i]["subject_good"][0])
+
                 likelihood = a.probability_of_responding(
                     subject_response=self.data[i]["subject_choice"][t],
-                    partner_good=self.data[i]["partner_good"][t]
+                    partner_good=self.data[i]["partner_good"][t],
+                    partner_type=self.data[i]["partner_type"][t],
+                    proportions=self.data[i]["prop"][t]
                 )
 
                 if likelihood > 0:
@@ -337,7 +367,8 @@ class PerformanceComputerWithoutParameters(object):
 
                 a.do_the_encounter(partner_choice=self.data[i]["partner_choice"][t],
                                    partner_good=self.data[i]["partner_good"][t],
-                                   subject_choice=self.data[i]["subject_choice"][t])
+                                   subject_choice=self.data[i]["subject_choice"][t],
+                                   partner_type=self.data[i]["partner_type"][t])
 
             max_sum_ll.append(sum(log_likelihood_list))
 
@@ -357,18 +388,20 @@ class ModelComparison(object):
 
         self.storing_costs = np.asarray([1, 4, 9])
         self.u = 100
+        self.beta = 0.9
 
         self.subjects_idx = np.arange(30)
 
         self.data = import_data()
 
-        self.model_to_test = ["Duffy", "RLStrategic", "RLForward", "TotalGogol", "StupidAgent"]
+        self.model_to_test = ["KW", "Duffy", "TotalGogol", "StupidAgent", "RLStrategic", "RLForward"]
 
     def run(self):
 
         general_parameters = {
             "storing_costs": self.storing_costs,
             "u": self.u,
+            "beta": self.beta,
             "subjects_idx": self.subjects_idx,
             "data": self.data
         }
