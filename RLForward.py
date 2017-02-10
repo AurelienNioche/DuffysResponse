@@ -127,6 +127,8 @@ class RLForwardAgent(Agent):
     
     def probability_of_responding(self, subject_response, partner_good, partner_type, proportions):
 
+        self.learn(partner_good=partner_good, partner_type=partner_type)
+
         relevant_strategies_values = self.strategies[(self.in_hand, partner_type, partner_good)]
         p_values = softmax(relevant_strategies_values, self.temp)
         
