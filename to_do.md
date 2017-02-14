@@ -77,7 +77,5 @@ if level of speculation is the same.
 
 * Choice confirmation?
 
-* Change Color of goods
-
-* 
+* Change Color of goods 
 

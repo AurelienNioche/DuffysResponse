@@ -34,8 +34,10 @@ class PerformanceComputer(object):
             "NonParametrizedAgent": self.get_non_parametrized_model,
         }
 
-        self.non_parametrized_model = {"TotalGogol": TotalGogol, "StupidAgent": StupidAgent,
-                      "Duffy": DuffyAgent, "KW": KwAgent}
+        self.non_parametrized_model = {
+            "TotalGogol": TotalGogol, "StupidAgent": StupidAgent,
+            "Duffy": DuffyAgent, "KW": KwAgent
+        }
 
     def run(self, *args):
 
