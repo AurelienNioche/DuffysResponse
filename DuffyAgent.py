@@ -77,6 +77,8 @@ class DuffyAgent(Agent):
         self.in_hand_at_the_beginning_of_the_round = self.in_hand
 
         if partner_good == self.C:
+            print("C")
+            print("s", subject_response)
             p_values = [0, 1]  # Accept for sure
 
         elif self.in_hand == self.P and partner_good == self.T:
@@ -86,6 +88,8 @@ class DuffyAgent(Agent):
             p_values = [p_refusing, 1 - p_refusing]
 
         else:
+            print("other")
+            print("s", subject_response)
             p_values = [1, 0]
 
         return p_values[subject_response]
@@ -96,6 +100,8 @@ class DuffyAgent(Agent):
             self.in_hand = partner_good
 
         self.consume()
+
+        self.learn()
 
 
 def main():

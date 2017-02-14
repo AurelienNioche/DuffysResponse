@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats.stats import pearsonr
 import seaborn as sns
 from os import path
 from data_manager import import_data
@@ -66,6 +67,26 @@ def compute_consumption_ratio(data):
     return ratio_list
 
 
+def compute_pure_consumption_ratio(data):
+
+    ratio_list = []
+
+    for i in data:
+
+        t_max = len(i["subject_good"])
+        cons_good = (i["subject_good"][0] - 1) % 3
+
+        consumption = 0
+        for t in range(t_max):
+
+            if i["partner_good"][t] == cons_good and i["subject_choice"][t] == 1:
+                    consumption += 1
+        ratio = consumption / t_max
+        ratio_list.append(ratio)
+
+    return ratio_list
+
+
 def do_some_stats(array_like, label):
 
     # Plot distribution
@@ -88,13 +109,30 @@ def do_some_stats(array_like, label):
     print()
 
 
+def do_some_correlation_analysis(array_like_0, array_like_1, label):
+
+    cor = pearsonr(array_like_0, array_like_1)
+    print("{}: {:.2f} [p={:.3f}]".format(label, cor[0], cor[1]))
+
+
 def main():
 
     data = import_data()
     sp_ratio_list = compute_speculation_ratio(data=data)
     cons_ratio_list = compute_consumption_ratio(data=data)
-    do_some_stats(sp_ratio_list, "Speculation")
-    do_some_stats(cons_ratio_list, "Consumption")
+    pure_cons_list = compute_pure_consumption_ratio(data=data)
+    # do_some_stats(sp_ratio_list, "Speculation")
+    # do_some_stats(cons_ratio_list, "Consumption")
+    # do_some_stats(pure_cons_list, "PureConsumption")
+
+    do_some_correlation_analysis(sp_ratio_list, cons_ratio_list,
+                                 label="Correlation between accepting to speculate and accepting to consume")
+
+    do_some_correlation_analysis(sp_ratio_list, pure_cons_list,
+                                 label="Correlation between accepting to speculate and average consumption")
+
+    do_some_correlation_analysis(cons_ratio_list, pure_cons_list,
+                                 label="Correlation between accepting to consume and average consumption")
 
 if __name__ == "__main__":
 
