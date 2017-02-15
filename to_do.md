@@ -32,7 +32,7 @@
 
 ## Plans
 
-* Forward RL model: correlations for between gamma and speculation frequency
+* Forward RL model: correlations between gamma and speculation frequency
 
 * Make play best model with best parameters for each agent against KW agents and check 
 if level of speculation is the same.

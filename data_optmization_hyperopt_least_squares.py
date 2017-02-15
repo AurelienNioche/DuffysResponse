@@ -6,6 +6,7 @@ from multiprocessing.pool import ThreadPool
 from multiprocessing import cpu_count
 from data_manager import import_data
 from RLForward import RLForwardAgent
+from RLForward2 import RLForwardAgent2
 from RL import RLAgent as RLStrategicAgent
 from stupidy_is_better import TotalGogol, StupidAgent
 from DuffyAgent import DuffyAgent
@@ -32,6 +33,7 @@ class PerformanceComputer(object):
 
         self.func = {
             "RLForward": self.get_FRL_model,
+            "RLForward2": self.get_FRL2_model,
             "RLStrategic": self.get_SRL_model,
             "NonParametrizedAgent": self.get_non_parametrized_model,
         }
@@ -44,8 +46,8 @@ class PerformanceComputer(object):
     def run(self, *args):
 
         model = self.func[self.model](*args)
-        neg_ll_sum = self.compute_neg_sum_log_likelihood(model)
-        return neg_ll_sum
+        squares_sum = self.compute_sum_errors_squares(model)
+        return squares_sum
 
     def get_FRL_model(self, *args):
 
@@ -53,6 +55,28 @@ class PerformanceComputer(object):
         q_values = np.asarray(args[0][3:]).reshape((12, 2))
 
         model = RLForwardAgent(
+            prod=self.prod,
+            cons=self.cons,  # Suppose we are in the KW's Model A
+            third=self.third,
+            u=self.raw_u,
+            beta=self.beta,
+            storing_costs=self.raw_storing_costs,
+            agent_parameters={
+                "alpha": alpha,
+                "temp": temp,
+                "gamma": gamma,
+                "q_values": q_values
+            }
+        )
+
+        return model
+
+    def get_FRL2_model(self, *args):
+
+        alpha, temp, gamma = args[0][:3]
+        q_values = np.asarray(args[0][3:]).reshape((6, 2))
+
+        model = RLForwardAgent2(
             prod=self.prod,
             cons=self.cons,  # Suppose we are in the KW's Model A
             third=self.third,
@@ -109,9 +133,9 @@ class PerformanceComputer(object):
 
         return model
 
-    def compute_neg_sum_log_likelihood(self, model):
+    def compute_sum_errors_squares(self, model):
 
-        log_likelihood_list = []
+        squares_list = []
 
         for t in range(self.t_max):
 
@@ -123,12 +147,8 @@ class PerformanceComputer(object):
                 partner_type=self.data["partner_type"][t],
                 proportions=self.data["prop"][t])
 
-            if likelihood > 0:
-                perf = np.log(likelihood)
-            else:
-                perf = np.log(0.001)  # To avoid log(0). We could have a best idea. Maybe.
-                # We could interpret this as the probability of making a stupid error
-            log_likelihood_list.append(perf)
+            error = 1 - likelihood
+            squares_list.append(error ** 2)
 
             model.do_the_encounter(
                 partner_choice=self.data["partner_choice"][t],
@@ -136,26 +156,26 @@ class PerformanceComputer(object):
                 partner_good=self.data["partner_good"][t],
                 subject_choice=self.data["subject_choice"][t])
 
-        result = - sum(log_likelihood_list)
+        result = sum(squares_list)
         return result
 
     def evaluate(self, *args):
 
-        neg_ll_sum = self.run(args)
-        ll_sum = neg_ll_sum * (- 1)
+        squares_sum = self.run(args)
 
         if "NonParametrizedAgent" in args:
             degrees_of_freedom = 0
         else:
             degrees_of_freedom = len(args)
 
-        return ll_sum, self.bic_formula(max_log_likelihood=ll_sum,
-                                        n_trials=self.t_max, degrees_of_freedom=degrees_of_freedom)
+        return squares_sum, self.bic_formula(
+            squares_sum=squares_sum,
+            n_trials=self.t_max, degrees_of_freedom=degrees_of_freedom)
 
     @staticmethod
-    def bic_formula(max_log_likelihood, n_trials, degrees_of_freedom):
+    def bic_formula(squares_sum, n_trials, degrees_of_freedom):
 
-        return - 2 * max_log_likelihood + np.log(n_trials) * degrees_of_freedom
+        return n_trials * np.log(squares_sum / n_trials) + np.log(n_trials) * degrees_of_freedom
 
 
 class Optimizer(object):
@@ -174,8 +194,11 @@ class Optimizer(object):
         self.random_evaluations = 25
         self.max_evaluations = 100
 
+        self.n_processes = cpu_count() * 4
+
         self._create_search_space = {
             "RLForward": self._create_search_space_for_RLForward,
+            "RLForward2": self._create_search_space_for_RLForward2,
             "RLStrategic": self._create_search_space_for_RLStrategic,
         }
 
@@ -188,9 +211,6 @@ class Optimizer(object):
         print("Optimizing with {}...".format(model))
         print()
 
-        # Create search space depending of the model
-        search_space, parameters = self._create_search_space[model]()
-
         # Create a progression bar
         p_bar = tqdm(total=len(self.subjects_idx))
 
@@ -202,15 +222,13 @@ class Optimizer(object):
                 {
                     "i": i,
                     "model": model,
-                    "search_space": search_space,
-                    "parameters": parameters,
                     "p_bar": p_bar
                 }
 
             )
 
         # Optimize for selected individuals using multi threading
-        pool = ThreadPool(processes=cpu_count())
+        pool = ThreadPool(processes=self.n_processes)
         backup = pool.map(self._compute, compute_args)
 
         # Close progression bar
@@ -229,23 +247,24 @@ class Optimizer(object):
 
         results = self._compute(args={
             "i": idx,
-            "model": model,
-            "search_space": search_space,
-            "parameters": parameters
+            "model": model
         })
 
         return results
 
     def _compute(self, args):
 
-        best = self._optimize(ind=args["i"], model=args["model"], search_space=args["search_space"])
+        # Create search space depending of the model
+        search_space, parameters = self._create_search_space[args["model"]](args["i"])
 
-        max_log_likelihood, bic_value = \
-            self._evaluate_performance(ind=args["i"], model=args["model"], args=[best[i] for i in args["parameters"]])
+        best = self._optimize(ind=args["i"], model=args["model"], search_space=search_space)
+
+        squares_sum, bic_value = \
+            self._evaluate_performance(ind=args["i"], model=args["model"], args=[best[i] for i in parameters])
 
         # Put results in a dictionary
         results = dict()
-        results["max_log_likelihood"] = max_log_likelihood
+        results["squares_sum"] = squares_sum
         results["bic"] = bic_value
         results["best"] = best
 
@@ -281,7 +300,7 @@ class Optimizer(object):
 
     # --------------------- SEARCH SPACE ------------------------------ #
 
-    def _create_search_space_for_RLForward(self):
+    def _create_search_space_for_RLForward(self, ind):
 
         parameters = [
             "alpha",
@@ -289,13 +308,15 @@ class Optimizer(object):
             "gamma"
         ]
 
-        n_situations = 12
-
-        for i in range(n_situations):
-            for j in range(2):
-                parameters.append(
-                    "q_{:02d}_{}".format(i, j)
-                )
+        # For each object the agent could have in hand
+        for i in [self.data[ind]["subject_good"][0], (self.data[ind]["subject_good"][0] - 1) % 3]:
+            # for every type of agent he could be matched with
+            for j in range(3):
+                # For each object this 'partner' could have in hand (production, third good)
+                for k in [(j+1) % 3, (j-1) % 3]:
+                    # Key is composed by good in hand, partner type, good in partner's hand
+                    for e in [0, 1]:
+                        parameters.append("q{}{}{}{}".format(i, j, k, e))
 
         search_space = []
 
@@ -311,7 +332,37 @@ class Optimizer(object):
 
         return search_space, parameters
 
-    def _create_search_space_for_RLStrategic(self):
+    def _create_search_space_for_RLForward2(self, ind):
+
+        parameters = [
+            "alpha",
+            "temp",
+            "gamma"
+        ]
+
+        # For each object the agent could have in hand
+        for i in [self.data[ind]["subject_good"][0], (self.data[ind]["subject_good"][0] - 1) % 3]:
+            # for proposed object
+            for j in range(3):
+                # Key is composed by good in hand, partner type, good in partner's hand
+                for e in [0, 1]:
+                    parameters.append("q{}{}{}".format(i, j, e))
+
+        search_space = []
+
+        for i in parameters:
+            if i != 'temp':
+                minimum, maximum = 0., 1.
+            else:
+                minimum, maximum = 0.01, 1.
+
+            search_space.append(
+                op.hp.uniform(i, minimum, maximum)
+            )
+
+        return search_space, parameters
+
+    def _create_search_space_for_RLStrategic(self, ind):
 
         parameters = [
             "alpha",
@@ -358,11 +409,11 @@ class PerformanceComputerWithoutParameters(object):
 
         for i in self.subjects_idx:
             p = PerformanceComputer(individual_data=self.data[i], model="NonParametrizedAgent")
-            sum_ll, bic_value = p.evaluate((model, ))
+            squares_sum, bic_value = p.evaluate((model, ))
 
             # Put results in a dictionary
             results = dict()
-            results["max_log_likelihood"] = sum_ll
+            results["squares_sum"] = squares_sum
             results["bic"] = bic_value
 
             backup.append(results)
@@ -410,7 +461,7 @@ class ModelComparison(object):
 
         for model in self.model_to_test:
 
-            for var in ["max_log_likelihood", "bic"]:
+            for var in ["squares_sum", "bic"]:
 
                 data = [results[model][i][var] for i in range(len(self.subjects_idx))]
 
@@ -425,11 +476,13 @@ class ModelComparison(object):
 
     def save(self, results):
 
+        np.save("../optimization.npy", results)
+
         with open('../optimization_individual.csv', 'w', newline='') as csvfile:
 
             writer = csv.writer(csvfile, delimiter=';')
             writer.writerow([
-                "idx", "model", "LLmax", "BIC"
+                "idx", "model", "squares_sum", "BIC"
             ])
 
             for i, idx in enumerate(self.subjects_idx):
@@ -438,7 +491,7 @@ class ModelComparison(object):
                     to_write = [
                         idx,
                         model,
-                        results[model][i]["max_log_likelihood"],
+                        results[model][i]["squares_sum"],
                         results[model][i]["bic"]
                     ]
                     if "best" in results[model][i]:
@@ -451,12 +504,12 @@ class ModelComparison(object):
             writer = csv.writer(csvfile, delimiter=';')
             writer.writerow([
                 "model",
-                "LLmax_mean", "LLmax_std", "LLmax_min", "LLmax_max",
+                "squares_sum_mean", "squares_sum_std", "squares_sum_min", "squares_sum_max",
                 "BIC_mean", "BIC_std", "BIC_min", "BIC_max"
             ])
             for model in self.model_to_test:
 
-                to_analyse = ["max_log_likelihood", "bic"]
+                to_analyse = ["squares_sum", "bic"]
 
                 to_write = [model]
                 for var in to_analyse:
@@ -471,7 +524,7 @@ class ModelComparison(object):
 
 
 def comparison_multi_models(
-        data, model_to_test=("KW", "Duffy", "TotalGogol", "StupidAgent", "RLStrategic", "RLForward")):
+        data, model_to_test=("RLForward2", "KW", "Duffy", "TotalGogol", "StupidAgent", "RLStrategic", "RLForward")):
 
     m = ModelComparison(data=data, model_to_test=model_to_test)
     m.run()
@@ -487,9 +540,9 @@ def test_single_non_parametric_model(model, data):
 def test_single_agent_with_non_parametric_model(model, data, idx):
 
     p = PerformanceComputer(individual_data=data[idx], model="NonParametrizedAgent")
-    sum_ll, bic_value = p.evaluate((model,))
+    squares_sum, bic_value = p.evaluate((model,))
 
-    print("max_log_likelihood", sum_ll)
+    print("squares_sum", squares_sum)
     print("bic", bic_value)
 
 
@@ -503,7 +556,8 @@ def test_single_agent_with_parametric_model(model, data, idx):
 def main():
 
     data = import_data()
-    test_single_agent_with_non_parametric_model(model="Duffy", data=data, idx=0)
+    comparison_multi_models(data=data)
+    # test_single_agent_with_non_parametric_model(model="Duffy", data=data, idx=0)
 
 
 if __name__ == "__main__":

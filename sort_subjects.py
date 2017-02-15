@@ -40,7 +40,7 @@ def compute_speculation_ratio(data, verbose=False):
             print("ratio speculate", ratio_speculate)
             print()
 
-    return ratio_speculate_list
+    return np.asarray(ratio_speculate_list)
 
 
 def compute_consumption_ratio(data):
@@ -64,7 +64,7 @@ def compute_consumption_ratio(data):
         ratio = consumption / consumption_proposition
         ratio_list.append(ratio)
 
-    return ratio_list
+    return np.asarray(ratio_list)
 
 
 def compute_pure_consumption_ratio(data):
@@ -84,7 +84,7 @@ def compute_pure_consumption_ratio(data):
         ratio = consumption / t_max
         ratio_list.append(ratio)
 
-    return ratio_list
+    return np.asarray(ratio_list)
 
 
 def do_some_stats(array_like, label):
@@ -111,8 +111,8 @@ def do_some_stats(array_like, label):
 
 def do_some_correlation_analysis(array_like_0, array_like_1, label):
 
-    cor = pearsonr(array_like_0, array_like_1)
-    print("{}: {:.2f} [p={:.3f}]".format(label, cor[0], cor[1]))
+    cor, p = pearsonr(array_like_0, array_like_1)
+    print("{}: {:.2f} [p={:.3f}]".format(label, cor, p))
 
 
 def main():

@@ -35,12 +35,9 @@ class KwAgent(Agent):
 
             else:
                 # P 300 of Duffy's Learning to Speculate
-                cond = (self.storing_costs[2] - self.storing_costs[1]) > \
+                cond = (self.storing_costs[2] - self.storing_costs[1]) < \
                     (proportions[2, 0] - (1-proportions[1, 2])) / 3 * self.beta * self.u
-                if cond:
-                    return 0
-                else:
-                    return 1
+                return int(cond)
                 
     # -------------- FITTING ------------------------- #
     
@@ -62,21 +59,18 @@ class KwAgent(Agent):
 
             else:
                 # P 300 of Duffy's Learning to Speculate
-                cond = (self.storing_costs[2] - self.storing_costs[1]) > \
+                cond = (self.storing_costs[2] - self.storing_costs[1]) < \
                     (proportions[2] - (1-proportions[1])) / 3 * self.beta * self.u
-                if cond:
-                    return subject_response == 0
-                else:
-                    return subject_response == 1
+                return subject_response == int(cond)
 
 
 def main():
 
     parameters = {
-        "t_max": 2,
+        "t_max": 500,
         "u": 100,
         "beta": 0.9,
-        "role_repartition": np.array([10000, 10000, 10000]),
+        "role_repartition": np.array([500, 500, 500]),
         "storing_costs": np.array([0.01, 0.04, 0.09]),
         "kw_model": ModelA,
         "agent_model": KwAgent,
