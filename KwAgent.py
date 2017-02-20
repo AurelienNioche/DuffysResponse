@@ -67,8 +67,8 @@ class KwAgent(Agent):
 def main():
 
     parameters = {
-        "t_max": 500,
-        "u": 100,
+        "t_max": 100,
+        "u": 1,
         "beta": 0.9,
         "role_repartition": np.array([500, 500, 500]),
         "storing_costs": np.array([0.01, 0.04, 0.09]),

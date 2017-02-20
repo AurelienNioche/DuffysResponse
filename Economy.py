@@ -199,6 +199,18 @@ class Economy(object):
             self.agents[i].proceed_to_exchange(None)
             self.agents[j].proceed_to_exchange(None)
 
+    def compute_equilibrium(self):
+
+        if (self.storing_costs[2] - self.storing_costs[1]) < (2 ** 0.5 - 1) * (self.beta / 3) * self.u:
+            return "speculative"
+
+        elif (self.storing_costs[2] - self.storing_costs[1]) > 0.5 * (self.beta / 3) * self.u:
+
+            return "fundamental"
+
+        else:
+            return "no equilibrium"
+
 
 def launch(**kwargs):
     

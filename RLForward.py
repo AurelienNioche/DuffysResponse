@@ -62,7 +62,7 @@ class RLForwardAgent(Agent):
                 for k in [self.kw_model.roles[j][0], self.kw_model.roles[j][2]]:
                     if initial_values is not None:
                     # Key is composed by good in hand, partner type, good in partner's hand
-                        strategies[(i, j, k)] = initial_values[idx, :]
+                        strategies[(i, j, k)] = initial_values[idx, :].copy()
                     else:
                         strategies[(i, j, k)] = np.zeros(2)
 
@@ -154,13 +154,13 @@ class RLForwardAgent(Agent):
 
 def main():
 
-    storing_costs = np.array([0.01, 0.04, 0.09])
+    storing_costs = np.array([0.01, 0.04, 0.09])  # 5
     u = 1
 
     parameters = {
-        "t_max": 20,
-        "agent_parameters": {"alpha": 0.005, "temp": 0.1, "gamma": 0.9,
-                             "q_values": None},
+        "t_max": 500,
+        "agent_parameters": {"alpha": 0.2, "temp": 0.01, "gamma": 0.2,
+                             "q_values": np.ones((12, 2))},
         "role_repartition": np.array([500, 500, 500]),
         "storing_costs": storing_costs,
         "u": u,
@@ -172,9 +172,9 @@ def main():
 
     backup = e.run()
 
-    backup["last_strategies"] = [agent.strategies for agent in e.agents]
+    # backup["last_strategies"] = [agent.strategies for agent in e.agents]
 
-    save(backup)
+    # save(backup)
 
     represent_results(backup=backup, parameters=parameters)
 

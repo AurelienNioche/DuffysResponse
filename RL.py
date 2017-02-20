@@ -56,8 +56,6 @@ class RLAgent(Agent):
         # It will be an integer between 0 and 3
         self.followed_strategy = None
 
-        self.utility = None
-
         absolute_to_relative_3_types = np.array([
             [
                 np.where(self.kw_model.roles[0] == 0)[0][0],
@@ -86,7 +84,7 @@ class RLAgent(Agent):
         self.alpha = self.agent_parameters["alpha"]
         self.temp = self.agent_parameters["temp"]
 
-        self.strategies_values = self.agent_parameters["strategy_values"]
+        self.strategies_values = self.agent_parameters["strategy_values"].copy()
 
         self.u, self.storing_costs = self.define_u_and_storing_costs(self.u, self.storing_costs)
 
@@ -119,26 +117,26 @@ class RLAgent(Agent):
         # Call 'consume' method from parent (that is 'Agent')
         super().consume()
 
-        # In more, compute utility and learn something from results
-        self.compute_utility()
         self.learn()
 
     # ------------------------ RL PART ------------------------------------------------------ #
 
     def compute_utility(self):
 
-        self.utility = \
-            self.consumption - self.storing_costs[self.in_hand]
+        utility = \
+            max(self.storing_costs) + self.consumption * self.u - self.storing_costs[self.in_hand]
 
         # Maybe we want that to be bounded between 0 and 1 with something like 0.5 + consumption/2 - storing cost
         # Be sure that utility lies between 0 and 1
-        # assert 0 <= self.utility <= 1
+        assert 0 <= utility <= 1
+
+        return utility
 
     def learn(self):
 
         # 'Classic' RL rule
         self.strategies_values[self.followed_strategy] += \
-            self.alpha * (self.utility - self.strategies_values[self.followed_strategy])
+            self.alpha * (self.compute_utility() - self.strategies_values[self.followed_strategy])
 
     def select_strategy(self):
 
@@ -151,7 +149,9 @@ class RLAgent(Agent):
 
     def probability_of_responding(self, subject_response, partner_good, partner_type, proportions):
 
-        compatible = self.strategies[:,
+        compatible = \
+            self.strategies[
+                :,
                 self.absolute_to_relative[self.in_hand],
                 self.absolute_to_relative[partner_good]
             ] == subject_response
@@ -184,17 +184,18 @@ def test_agent():
         u=100
     )
 
-    a.probability_of_responding(subject_response=1, partner_good=0)
+    a.probability_of_responding(subject_response=1, partner_good=0, partner_type=None, proportions=None)
 
 
 def main():
 
     parameters = {
         "t_max": 500,
-        "agent_parameters": {"alpha": 0.5, "temp": 0.01},
+        "agent_parameters": {"alpha": 0.2, "temp": 0.01,
+                             "strategy_values": np.ones(4)},
         "role_repartition": np.array([500, 500, 500]),
-        "storing_costs": np.array([1, 4, 9]),
-        "u": 100,
+        "storing_costs": np.array([0.01, 0.03, 0.09]),
+        "u": 1,
         "kw_model": ModelA,
         "agent_model": RLAgent
     }
@@ -209,5 +210,5 @@ def main():
 
 if __name__ == "__main__":
 
-    test_agent()
+    main()
 
