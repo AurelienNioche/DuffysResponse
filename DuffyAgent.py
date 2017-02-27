@@ -1,17 +1,20 @@
 import numpy as np
-from KWModels import ModelA
 from Economy import launch
-from analysis import represent_results
-from AbstractAgent import Agent
+from graph import represent_results
+from stupid_agent import StupidAgent
 
 
-class DuffyAgent(Agent):
+class DuffyAgent(StupidAgent):
 
     name = "Duffy"
 
     def __init__(self, **kwargs):
 
         super().__init__(**kwargs)
+
+        assert len(self.storing_costs) == 3, "Duffy Agent can not handle only 3 goods."
+
+        self.T = [i for i in range(3) if i != self.P and i != self.C][0]
 
         # Let values[0] be the v_{i+1} and values[1] be v_{i+2}
         self.values = np.zeros(2)
@@ -24,7 +27,7 @@ class DuffyAgent(Agent):
             - self.storing_costs[self.T] + self.beta * self.u
         ])
 
-        self.in_hand_at_the_beginning_of_the_round = self.P
+        self.H_at_the_beginning_of_the_round = self.P
 
     @staticmethod
     def define_u_and_storing_costs(u, storing_costs):
@@ -36,14 +39,14 @@ class DuffyAgent(Agent):
 
         return new_u, new_storing_costs
 
-    def are_you_satisfied(self, proposed_object, type_of_other_agent, proportions):
+    def are_you_satisfied(self, partner_good, partner_type, proportions):
 
-        self.in_hand_at_the_beginning_of_the_round = self.in_hand
+        self.H_at_the_beginning_of_the_round = self.H
 
-        if proposed_object == self.C:
+        if partner_good == self.C:
             accept = 1
 
-        elif self.in_hand == self.P and proposed_object == self.T:
+        elif self.H == self.P and partner_good == self.T:
 
             x = self.values[0] - self.values[1]
             p_refusing = np.exp(x) / (1 + np.exp(x))
@@ -62,11 +65,11 @@ class DuffyAgent(Agent):
 
     def learn(self):
 
-        if self.in_hand_at_the_beginning_of_the_round == self.P:
+        if self.H_at_the_beginning_of_the_round == self.P:
 
             self.values[0] += self.consumption * self.gamma[0] - (1-self.consumption) * self.gamma[1]
 
-        elif self.in_hand_at_the_beginning_of_the_round == self.T:
+        elif self.H_at_the_beginning_of_the_round == self.T:
 
             self.values[1] += self.consumption * self.gamma[1] - (1-self.consumption) * self.gamma[0]
 
@@ -74,13 +77,13 @@ class DuffyAgent(Agent):
 
     def probability_of_responding(self, subject_response, partner_good, partner_type, proportions):
 
-        self.in_hand_at_the_beginning_of_the_round = self.in_hand
+        self.H_at_the_beginning_of_the_round = self.H
 
         if partner_good == self.C:
 
             p_values = [0, 1]  # Accept for sure
 
-        elif self.in_hand == self.P and partner_good == self.T:
+        elif self.H == self.P and partner_good == self.T:
 
             x = self.values[0] - self.values[1]
             p_refusing = np.exp(x) / (1 + np.exp(x))
@@ -95,7 +98,7 @@ class DuffyAgent(Agent):
     def do_the_encounter(self, subject_choice, partner_choice, partner_good, partner_type):
 
         if subject_choice and partner_choice:
-            self.in_hand = partner_good
+            self.H = partner_good
 
         self.consume()
 
@@ -108,9 +111,8 @@ def main():
         "t_max": 500,
         "beta": 0.9,
         "u": 100,
-        "role_repartition": [500, 500, 500],
+        "repartition_of_roles": [500, 500, 500],
         "storing_costs": [1, 4, 9],
-        "kw_model": ModelA,
         "agent_model": DuffyAgent,
     }
 

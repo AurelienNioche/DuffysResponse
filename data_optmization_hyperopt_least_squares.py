@@ -8,7 +8,8 @@ from data_manager import import_data
 from RLForward import RLForwardAgent
 from RLForward2 import RLForwardAgent2
 from RL import RLAgent as RLStrategicAgent
-from stupidy_is_better import TotalGogol, StupidAgent
+from stupidy_is_better import TotalGogol
+from stupid_agent import StupidAgent
 from DuffyAgent import DuffyAgent
 from KwAgent import KwAgent
 
@@ -25,7 +26,6 @@ class PerformanceComputer(object):
 
         self.prod = self.data["subject_good"][0]
         self.cons = (self.data["subject_good"][0] - 1) % 3
-        self.third = (self.data["subject_good"][0] - 2) % 3
 
         self.t_max = len(self.data["subject_good"])
 
@@ -57,7 +57,6 @@ class PerformanceComputer(object):
         model = RLForwardAgent(
             prod=self.prod,
             cons=self.cons,  # Suppose we are in the KW's Model A
-            third=self.third,
             u=self.raw_u,
             beta=self.beta,
             storing_costs=self.raw_storing_costs,
@@ -79,7 +78,6 @@ class PerformanceComputer(object):
         model = RLForwardAgent2(
             prod=self.prod,
             cons=self.cons,  # Suppose we are in the KW's Model A
-            third=self.third,
             u=self.raw_u,
             beta=self.beta,
             storing_costs=self.raw_storing_costs,
@@ -106,7 +104,6 @@ class PerformanceComputer(object):
         model = RLStrategicAgent(
             prod=self.prod,
             cons=self.cons,  # Suppose we are in the KW's Model A
-            third=self.third,
             storing_costs=self.raw_storing_costs,
             u=self.raw_u,
             agent_parameters={
@@ -125,7 +122,6 @@ class PerformanceComputer(object):
         model = self.non_parametrized_model[model_name](
                 prod=self.prod,
                 cons=self.cons,  # Suppose we are in the KW's Model A
-                third=self.third,
                 storing_costs=self.raw_storing_costs,
                 u=self.raw_u,
                 beta=self.beta
@@ -191,8 +187,8 @@ class Optimizer(object):
 
         # ------ Optimization parameters ------- #
 
-        self.random_evaluations = 25
-        self.max_evaluations = 100
+        self.random_evaluations = 5
+        self.max_evaluations = 10
 
         self.n_processes = cpu_count() * 4
 

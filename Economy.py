@@ -1,46 +1,52 @@
 import numpy as np
 from tqdm import tqdm
-from KWModels import ModelA
+import itertools as it
+from get_roles import get_roles
 
 
 class Economy(object):
 
-    def __init__(self, role_repartition, t_max, storing_costs, agent_model, u=100, beta=0.9,
-                 agent_parameters=None, kw_model=ModelA):
+    def __init__(self, repartition_of_roles, t_max, agent_model, storing_costs,
+                 u=None, beta=None, agent_parameters=None):
 
         self.t_max = t_max
-
         self.agent_parameters = agent_parameters
-
-        self.role_repartition = np.asarray(role_repartition)
-
         self.storing_costs = storing_costs
         self.u = u
         self.beta = beta
-
-        self.n_agent = sum(role_repartition)
-
-        self.kw_model = kw_model
-
         self.agent_model = agent_model
 
+        self.n_goods = len(storing_costs)
+        self.roles = get_roles(self.n_goods)
+        self.repartition_of_roles = np.asarray(repartition_of_roles)
+        self.n_agent = sum(self.repartition_of_roles)
+
         self.agents = None
-        
+
         # ----- For backup at t ----- #
 
-        self.exchanges = {(0, 1): 0, (0, 2): 0, (1, 2): 0}
+        self.exchanges = dict()
+        for i in it.combinations(range(self.n_goods), r=2):
+            self.exchanges[i] = 0
         self.n_exchange = 0
         self.consumption = 0
-        self.third_good_acceptance = np.zeros(3)
-        self.proposition_of_third_object = np.zeros(3)
+        self.good_accepted_as_medium = np.zeros(self.n_goods)
+        self.proposition_of_medium = np.zeros(self.n_goods)
 
         # Container for proportions of agents having this or that in hand according to their type
         #  - rows: type of agent
         # - columns: type of good
 
-        self.proportions = np.zeros((3, 3))
-        
+        self.proportions = np.zeros((self.n_goods, self.n_goods))
+
         # ---- For final backup ----- #
+        self.back_up = {
+            "exchanges": [],
+            "n_exchanges": [],
+            "consumption": [],
+            "good_accepted_as_medium": [],
+            "proportions": []
+        }
 
     def create_agents(self):
 
@@ -48,15 +54,17 @@ class Economy(object):
 
         agent_idx = 0
 
-        for agent_type, n in enumerate(self.role_repartition):
+        for agent_type, n in enumerate(self.repartition_of_roles):
 
-            i, j, k = self.kw_model.roles[agent_type]
+            i, j = self.roles[agent_type]
 
             for ind in range(n):
                 a = self.agent_model(
-                    agent_parameters=self.agent_parameters,
-                    prod=i, cons=j, third=k, u=self.u, beta=self.beta,
+                    prod=i, cons=j,
                     storing_costs=self.storing_costs,
+                    u=self.u,
+                    beta=self.beta,
+                    agent_parameters=self.agent_parameters,
                     idx=agent_idx)
 
                 agents.append(a)
@@ -68,115 +76,119 @@ class Economy(object):
 
         self.agents = self.create_agents()
         return self.play()
-    
+
     def play(self):
-
-        _ = self.agents
-
-        # For future back up
-        back_up = {
-            "exchanges": [],
-            "n_exchanges": [],
-            "consumption": [],
-            "third_good_acceptance": [],
-            "proportions": []
-        }
 
         for t in tqdm(range(self.t_max)):
 
-            # Containers for future backup
-            for k in self.exchanges.keys():
-                self.exchanges[k] = 0
-            self.n_exchange = 0
-            self.consumption = 0
-            self.third_good_acceptance[:] = 0
-            self.proposition_of_third_object[:] = 0
+            self.time_step()
 
-            # ----- COMPUTE PROPORTIONS ----- #
-            # Container for proportions of agents having this or that in hand according to their type
-            #  - rows: type of agent
-            # - columns: type of good
+        return self.back_up
 
-            self.proportions[:] = 0
-            for i in self.agents:
-                self.proportions[i.C, i.in_hand] += 1  # Type of agent is his consumption good
+    def time_step(self):
 
-            self.proportions[:] = self.proportions / (self.n_agent // 3)
+        self.reinitialize_backup_containers()
 
-            # --------------------------------- #
+        self.compute_proportions()
 
-            # ---------- MANAGE EXCHANGES ----- #
-            # Take a random order among the indexes of the agents.
-            agent_pairs = np.random.choice(self.n_agent, size=(self.n_agent // 2, 2), replace=False)
+        # ---------- MANAGE EXCHANGES ----- #
+        # Take a random order among the indexes of the agents.
+        agent_pairs = np.random.choice(self.n_agent, size=(self.n_agent // 2, 2), replace=False)
 
-            for i, j in agent_pairs:
+        for i, j in agent_pairs:
+            self.make_encounter(i, j)
 
-                self.make_encounter(i, j)
+        # Each agent consumes at the end of each round and adapt his behavior (or not).
+        for agent in self.agents:
+            agent.consume()
 
-            # Each agent consumes at the end of each round and adapt his behavior (or not).
-            for agent in self.agents:
-                agent.consume()
+        self.make_a_backup_for_t()
 
-                # Keep a trace from utilities
-                self.consumption += agent.consumption
+    def compute_proportions(self):
 
-            # ----- FOR FUTURE BACKUP ----- #
-            for key in self.exchanges.keys():
-                # Avoid division by zero
-                if self.n_exchange > 0:
-                    self.exchanges[key] /= self.n_exchange
-                else:
-                    self.exchanges[key] = 0
+        # Container for proportions of agents having this or that in hand according to their type
+        #  - rows: type of agent
+        # - columns: type of good
 
-            for i in range(3):
-                # Avoid division by zero
-                if self.proposition_of_third_object[i] > 0:
-                    self.third_good_acceptance[i] = self.third_good_acceptance[i] / self.proposition_of_third_object[i]
+        for i in self.agents:
+            self.proportions[i.C, i.H] += 1  # Type of agent is his consumption good
 
-                else:
-                    self.third_good_acceptance[i] = 0
+        for i in range(self.n_goods):
+            self.proportions[i] = self.proportions[i] / self.repartition_of_roles[i]
 
-            self.consumption /= self.n_agent
+    def make_a_backup_for_t(self):
 
-            # For back up
-            back_up["exchanges"].append(self.exchanges.copy())
-            back_up["consumption"].append(self.consumption)
-            back_up["n_exchanges"].append(self.n_exchange)
-            back_up["third_good_acceptance"].append(self.third_good_acceptance.copy())
-            back_up["proportions"].append(self.proportions.copy())
-            # ----------------------------- #
+        # Keep a trace from utilities
+        self.consumption = sum([a.consumption for a in self.agents])/self.n_agent
 
-        return back_up
-    
+        # ----- FOR FUTURE BACKUP ----- #
+
+        for key in self.exchanges.keys():
+            # Avoid division by zero
+            if self.n_exchange > 0:
+                self.exchanges[key] /= self.n_exchange
+            else:
+                self.exchanges[key] = 0
+
+        for i in range(self.n_goods):
+            # Avoid division by zero
+            if self.proposition_of_medium[i] > 0:
+                self.good_accepted_as_medium[i] = self.good_accepted_as_medium[i] / self.proposition_of_medium[i]
+
+            else:
+                self.good_accepted_as_medium[i] = 0
+
+        assert 0 <= self.good_accepted_as_medium.all() <= 1
+
+        # For back up
+        self.back_up["exchanges"].append(self.exchanges.copy())
+        self.back_up["consumption"].append(self.consumption)
+        self.back_up["n_exchanges"].append(self.n_exchange)
+        self.back_up["good_accepted_as_medium"].append(self.good_accepted_as_medium.copy())
+        self.back_up["proportions"].append(self.proportions.copy())
+
+    def reinitialize_backup_containers(self):
+
+        # Containers for future backup
+        for k in self.exchanges.keys():
+            self.exchanges[k] = 0
+        self.n_exchange = 0
+        self.consumption = 0
+        self.good_accepted_as_medium[:] = 0
+        self.proposition_of_medium[:] = 0
+
+        self.proportions[:] = 0
+
     def make_encounter(self, i, j):
 
-        i_H, j_H = self.agents[i].in_hand, self.agents[j].in_hand        
+        i_H, j_H = self.agents[i].H, self.agents[j].H
         i_P, j_P = self.agents[i].P, self.agents[j].P
-        i_T, j_T = self.agents[i].T, self.agents[j].T
         i_C, j_C = self.agents[i].C, self.agents[j].C
 
         # Each agent is "initiator' of an exchange during one period.
-        # Remember that consumption good = type of agent 
-        i_agreeing = self.agents[i].are_you_satisfied(j_H, j_C, self.proportions) 
+        # Remember that consumption good = type of agent
+        i_agreeing = self.agents[i].are_you_satisfied(partner_good=j_H, partner_type=j_C,
+                                                      proportions=self.proportions)
         # is his consumption good
-        j_agreeing = self.agents[j].are_you_satisfied(i_H, i_C, self.proportions)
+        j_agreeing = self.agents[j].are_you_satisfied(partner_good=i_H, partner_type=i_C,
+                                                      proportions=self.proportions)
 
         # Consider particular case of offering third object
-        i_facing_T = j_H == i_T and i_H == i_P
-        j_facing_T = i_H == j_T and j_H == j_P
-        
-        # ---- STATS ------ #
-      
-        if i_facing_T:
-            self.proposition_of_third_object[i_C] += 1
-            if i_agreeing:
-                self.third_good_acceptance[i_C] += 1 
+        i_facing_M = j_H != i_C and i_H == i_P
+        j_facing_M = i_H != j_C and j_H == j_P
 
-        if j_facing_T:
-            self.proposition_of_third_object[j_C] += 1
+        # ---- STATS ------ #
+
+        if i_facing_M:
+            self.proposition_of_medium[j_H] += 1  # Consider as key the good that is proposed as a medium of ex
+            if i_agreeing:
+                self.good_accepted_as_medium[j_H] += 1
+
+        if j_facing_M:
+            self.proposition_of_medium[i_H] += 1
             if j_agreeing:
-                self.third_good_acceptance[j_C] += 1
-                
+                self.good_accepted_as_medium[i_H] += 1
+
         # ------------ #
 
         # If both agents agree to exchange...
@@ -192,24 +204,10 @@ class Economy(object):
                 self.exchanges[exchange_type] += 1
                 self.n_exchange += 1
 
-            # ---------------- #
-
+                # ---------------- #
         else:
-
             self.agents[i].proceed_to_exchange(None)
             self.agents[j].proceed_to_exchange(None)
-
-    def compute_equilibrium(self):
-
-        if (self.storing_costs[2] - self.storing_costs[1]) < (2 ** 0.5 - 1) * (self.beta / 3) * self.u:
-            return "speculative"
-
-        elif (self.storing_costs[2] - self.storing_costs[1]) > 0.5 * (self.beta / 3) * self.u:
-
-            return "fundamental"
-
-        else:
-            return "no equilibrium"
 
 
 def launch(**kwargs):

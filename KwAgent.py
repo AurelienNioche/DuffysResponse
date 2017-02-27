@@ -1,28 +1,30 @@
 import numpy as np
-from AbstractAgent import Agent
-from KWModels import ModelA
+from stupid_agent import StupidAgent
 from Economy import launch
-from analysis import represent_results
+from graph import represent_results
 
 
-class KwAgent(Agent):
+class KwAgent(StupidAgent):
     name = "Kw"
 
     def __init__(self, **kwargs):
 
         super().__init__(**kwargs)
 
-        assert self.kw_model == ModelA, "Must be 'Model A'."
+        assert len(self.storing_costs) == 3, "KW Agent can not handle only 3 goods."
+
+        self.T = [i for i in range(3) if i != self.P and i != self.C][0]
+
         assert 0 < self.storing_costs[0] < self.storing_costs[1] < self.storing_costs[2], "Must be 'Economy A'."
 
     # ------------------------ SURCHARGED METHODS ------------------------------------------------------ #
 
-    def are_you_satisfied(self, partner_good, type_of_other_agent, proportions):
+    def are_you_satisfied(self, partner_good, partner_type, proportions):
 
         if partner_good == self.C:
             return 1
 
-        elif type_of_other_agent == self.C or partner_good == self.P:  # Type is defined by what an agent consumes
+        elif partner_type == self.C or partner_good == self.P:  # Type is defined by what an agent consumes
             return 0
 
         elif partner_good == self.T:
@@ -70,9 +72,8 @@ def main():
         "t_max": 100,
         "u": 1,
         "beta": 0.9,
-        "role_repartition": np.array([500, 500, 500]),
+        "repartition_of_roles": np.array([500, 500, 500]),
         "storing_costs": np.array([0.01, 0.04, 0.09]),
-        "kw_model": ModelA,
         "agent_model": KwAgent,
     }
 

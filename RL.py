@@ -1,10 +1,9 @@
 import numpy as np
-from AbstractAgent import Agent
-from KWModels import ModelA
+from stupid_agent import StupidAgent
 from module.useful_functions import softmax
 from Economy import launch
-from analysis import represent_results
-
+from graph import represent_results
+from get_roles import get_roles
 
 '''
 RL with reinforcement of strategies understood as Game Theory does
@@ -12,7 +11,7 @@ RL with reinforcement of strategies understood as Game Theory does
 '''
 
 
-class RLAgent(Agent):
+class RLAgent(StupidAgent):
 
     name = "RL"
 
@@ -56,28 +55,12 @@ class RLAgent(Agent):
         # It will be an integer between 0 and 3
         self.followed_strategy = None
 
-        absolute_to_relative_3_types = np.array([
-            [
-                np.where(self.kw_model.roles[0] == 0)[0][0],
-                np.where(self.kw_model.roles[0] == 1)[0][0],
-                np.where(self.kw_model.roles[0] == 2)[0][0]
-            ],
-            [
-                np.where(self.kw_model.roles[1] == 0)[0][0],
-                np.where(self.kw_model.roles[1] == 1)[0][0],
-                np.where(self.kw_model.roles[1] == 2)[0][0]
-            ],
-            [
-                np.where(self.kw_model.roles[2] == 0)[0][0],
-                np.where(self.kw_model.roles[2] == 1)[0][0],
-                np.where(self.kw_model.roles[2] == 2)[0][0]
-            ]
-        ], dtype=int)
+        self.roles = get_roles(len(self.storing_costs))
 
         # Take object with absolute reference to give object relating to agent
         #    (with 0: production good, 1: consumption good, 2: third object)
 
-        self.absolute_to_relative = absolute_to_relative_3_types[self.C]
+        self.absolute_to_relative = self.get_absolute_to_relative()
 
         # ----- RL PARAMETERS ---- #
 
@@ -87,6 +70,17 @@ class RLAgent(Agent):
         self.strategies_values = self.agent_parameters["strategy_values"].copy()
 
         self.u, self.storing_costs = self.define_u_and_storing_costs(self.u, self.storing_costs)
+
+    def get_absolute_to_relative(self):
+
+        to_return = np.zeros(3, dtype=int)
+        third = [i for i in range(3) if i != self.P and i != self.C][0]
+
+        to_return[self.P] = 0
+        to_return[self.C] = 1
+        to_return[third] = 2
+
+        return to_return
 
     @staticmethod
     def define_u_and_storing_costs(u, storing_costs):
@@ -103,12 +97,12 @@ class RLAgent(Agent):
 
     # ------------------------ SURCHARGED METHODS ------------------------------------------------------ #
 
-    def are_you_satisfied(self, proposed_object, type_of_other_agent, propositions):
+    def are_you_satisfied(self, partner_good, partner_type, proportions):
 
         self.select_strategy()
         agreeing = self.strategies[self.followed_strategy, 
-                                   self.absolute_to_relative[self.in_hand], 
-                                   self.absolute_to_relative[proposed_object]]
+                                   self.absolute_to_relative[self.H], 
+                                   self.absolute_to_relative[partner_good]]
 
         return agreeing
 
@@ -124,7 +118,7 @@ class RLAgent(Agent):
     def compute_utility(self):
 
         utility = \
-            max(self.storing_costs) + self.consumption * self.u - self.storing_costs[self.in_hand]
+            max(self.storing_costs) + self.consumption * self.u - self.storing_costs[self.H]
 
         # Maybe we want that to be bounded between 0 and 1 with something like 0.5 + consumption/2 - storing cost
         # Be sure that utility lies between 0 and 1
@@ -152,7 +146,7 @@ class RLAgent(Agent):
         compatible = \
             self.strategies[
                 :,
-                self.absolute_to_relative[self.in_hand],
+                self.absolute_to_relative[self.H],
                 self.absolute_to_relative[partner_good]
             ] == subject_response
 
@@ -164,7 +158,7 @@ class RLAgent(Agent):
         self.followed_strategy = subject_choice
 
         if subject_choice and partner_choice:
-            self.in_hand = partner_good
+            self.H = partner_good
 
         self.consume()  # Include learning in this model
 
@@ -193,10 +187,9 @@ def main():
         "t_max": 500,
         "agent_parameters": {"alpha": 0.2, "temp": 0.01,
                              "strategy_values": np.ones(4)},
-        "role_repartition": np.array([500, 500, 500]),
-        "storing_costs": np.array([0.01, 0.03, 0.09]),
+        "repartition_of_roles": [500, 500, 500],
+        "storing_costs": [0.01, 0.03, 0.09],
         "u": 1,
-        "kw_model": ModelA,
         "agent_model": RLAgent
     }
 

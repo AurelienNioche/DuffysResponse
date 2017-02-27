@@ -55,7 +55,6 @@ class PerformanceComputer(object):
         model = RLForwardAgent(
             prod=self.prod,
             cons=self.cons,  # Suppose we are in the KW's Model A
-            third=self.third,
             u=self.raw_u,
             beta=self.beta,
             storing_costs=self.raw_storing_costs,
@@ -82,7 +81,6 @@ class PerformanceComputer(object):
         model = RLStrategicAgent(
             prod=self.prod,
             cons=self.cons,  # Suppose we are in the KW's Model A
-            third=self.third,
             storing_costs=self.raw_storing_costs,
             u=self.raw_u,
             agent_parameters={
@@ -101,7 +99,6 @@ class PerformanceComputer(object):
         model = self.non_parametrized_model[model_name](
                 prod=self.prod,
                 cons=self.cons,  # Suppose we are in the KW's Model A
-                third=self.third,
                 storing_costs=self.raw_storing_costs,
                 u=self.raw_u,
                 beta=self.beta
@@ -171,8 +168,8 @@ class Optimizer(object):
 
         # ------ Optimization parameters ------- #
 
-        self.random_evaluations = 25
-        self.max_evaluations = 100
+        self.random_evaluations = 5
+        self.max_evaluations = 10
 
         self._create_search_space = {
             "RLForward": self._create_search_space_for_RLForward,
@@ -503,7 +500,8 @@ def test_single_agent_with_parametric_model(model, data, idx):
 def main():
 
     data = import_data()
-    test_single_agent_with_non_parametric_model(model="Duffy", data=data, idx=0)
+    # test_single_agent_with_non_parametric_model(model="Duffy", data=data, idx=0)
+    comparison_multi_models(data=data)
 
 
 if __name__ == "__main__":

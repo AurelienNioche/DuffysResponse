@@ -1,12 +1,11 @@
 import numpy as np
 from itertools import product
-from KWModels import ModelA
 from Economy import launch
-from analysis import represent_results
-from AbstractAgent import Agent
+from graph import represent_results
+from stupid_agent import StupidAgent
 
 
-class MarimonAgent(Agent):
+class MarimonAgent(StupidAgent):
 
     name = "Marimon"
 
@@ -37,12 +36,12 @@ class MarimonAgent(Agent):
         self.exchange_classifier_system.prepare_classifiers()
         self.consumption_classifier_system.prepare_classifiers()
 
-    def are_you_satisfied(self, proposed_object, type_of_other_agent=None, proportions=None):
+    def are_you_satisfied(self, partner_good, partner_type=None, proportions=None):
 
         # Choose the right classifier
 
         # Equation 5
-        m_index = self.exchange_classifier_system.get_potential_bidders(self.in_hand, proposed_object)
+        m_index = self.exchange_classifier_system.get_potential_bidders(self.H, partner_good)
 
         # Equation 6
         self.best_exchange_classifier = self.exchange_classifier_system.get_best_classifier(m_index)
@@ -86,7 +85,7 @@ class MarimonAgent(Agent):
         self.consumption = 0
 
         # Equation 7
-        m_index = self.consumption_classifier_system.get_potential_bidders(self.in_hand)
+        m_index = self.consumption_classifier_system.get_potential_bidders(self.H)
 
         # Equation 8
         self.best_consumption_classifier = self.consumption_classifier_system.get_best_classifier(m_index)
@@ -104,14 +103,14 @@ class MarimonAgent(Agent):
         if self.best_consumption_classifier.decision == 1:
 
             # And the agent has his consumption good
-            if self.in_hand == self.C:
+            if self.H == self.C:
                 self.consumption = 1
 
             # If he decided to consume, he produce a new unity of his production good
-            self.in_hand = self.P
+            self.H = self.P
 
         # Keep a trace of the previous object in hand
-        self.previous_object_in_hand = self.in_hand
+        self.previous_object_in_hand = self.H
 
 # --------------------------------------------------------------------------------------------------- #
 # -------------------------------- CLASSIFIER SYSTEM ------------------------------------------------ #
@@ -363,7 +362,7 @@ def test_agent():
         print("Round", i)
         print()
 
-        exc_decision = a.are_you_satisfied(proposed_object=0)
+        exc_decision = a.are_you_satisfied(partner_good=0)
         a.best_exchange_classifier.get_info()
 
         if exc_decision:
@@ -401,9 +400,8 @@ def main():
     parameters = {
         "t_max": 500,
         "agent_parameters": {"u": 500, "b11": 0.025, "b12": 0.025, "b21": 0.25, "b22": 0.25, "initial_strength": 0},
-        "role_repartition": np.array([50, 50, 50]),
+        "repartition_of_roles": np.array([50, 50, 50]),
         "storing_costs": np.array([0.1, 1., 20.]),
-        "kw_model": ModelA,
         "agent_model": MarimonAgent,
     }
 

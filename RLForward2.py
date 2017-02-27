@@ -1,17 +1,20 @@
 import numpy as np
-from KWModels import ModelA
 from Economy import Economy
-from analysis import represent_results
-from AbstractAgent import Agent
+from graph import represent_results
+from stupid_agent import StupidAgent
 from module.useful_functions import softmax
 from save import save
 
 
-class RLForwardAgent2(Agent):
-    name = "RLForward"
+class RLForwardAgent2(StupidAgent):
+    name = "RLForward2"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+        assert len(self.storing_costs) == 3, "RLForward Agent can not handle only 3 goods."
+
+        self.T = [i for i in range(3) if i != self.P and i != self.C][0]
 
         # ----- RL2 PARAMETERS ---- #
 
@@ -35,7 +38,7 @@ class RLForwardAgent2(Agent):
 
     def are_you_satisfied(self, partner_good, partner_type, proportions):
 
-        self.matching_pair = (self.in_hand, partner_good)
+        self.matching_pair = (self.H, partner_good)
         self.select_strategy()
 
         return self.followed_strategy  # 1 for agreeing, 0 otherwise
@@ -82,7 +85,7 @@ class RLForwardAgent2(Agent):
 
         # Anchorage is at the maximum of the storing costs so the worst option leads to a utility of 0.
         utility = \
-            max(self.storing_costs) + self.u * self.consumption - self.storing_costs[self.in_hand]
+            max(self.storing_costs) + self.u * self.consumption - self.storing_costs[self.H]
 
         # Be sure that utility lies between 0 and 1
         assert 0 <= utility <= 1
@@ -125,7 +128,7 @@ class RLForwardAgent2(Agent):
 
     def probability_of_responding(self, subject_response, partner_good, partner_type, proportions):
 
-        relevant_strategies_values = self.strategies[(self.in_hand, partner_good)]
+        relevant_strategies_values = self.strategies[(self.H, partner_good)]
         p_values = softmax(relevant_strategies_values, self.temp)
 
         # Assume there is only 2 p-values, return the one corresponding to the choice of the subject
@@ -134,12 +137,12 @@ class RLForwardAgent2(Agent):
     def do_the_encounter(self, subject_choice, partner_choice, partner_good, partner_type):
 
         # Memory for learning
-        self.matching_pair = self.in_hand, partner_good
+        self.matching_pair = self.H, partner_good
 
         self.followed_strategy = subject_choice
 
         if subject_choice and partner_choice:
-            self.in_hand = partner_good
+            self.H = partner_good
 
         self.consume()
 
@@ -155,10 +158,9 @@ def main():
         "t_max": 500,
         "agent_parameters": {"alpha": 0.5, "temp": 0.1, "gamma": 0.5,
                              "q_values": np.ones((6, 2))},
-        "role_repartition": np.array([50, 50, 50]),
+        "repartition_of_roles": np.array([50, 50, 50]),
         "storing_costs": storing_costs,
         "u": u,
-        "kw_model": ModelA,
         "agent_model": RLForwardAgent2,
     }
 

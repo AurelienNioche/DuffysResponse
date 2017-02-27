@@ -1,27 +1,23 @@
 import numpy as np
 from Economy import launch
-from analysis import represent_results
-from KWModels import ModelA
+from graph import represent_results
 
 
-class Agent(object):
+class StupidAgent(object):
 
     """
     Abstract class for agents
     """
     name = "Stupid agent"
 
-    def __init__(self, prod, cons, third, storing_costs, u,  beta=0.9,
-                 agent_parameters=None, kw_model=ModelA, idx=None):
+    def __init__(self, prod, cons, storing_costs, u=1,  beta=0.9,
+                 agent_parameters=None, idx=None):
 
         # Production object (integer in [0, 1, 2])
         self.P = prod
 
         # Consumption object (integer in [0, 1, 2])
         self.C = cons
-
-        # Other object (integer in [0, 1, 2])
-        self.T = third
 
         # Index of agent (more or less his name ; integer in [0, ..., n] with n : total number of agent)
         self.idx = idx
@@ -41,29 +37,27 @@ class Agent(object):
         self.exchange = None
 
         # Object an agent has in hand
-        self.in_hand = self.P
+        self.H = self.P
 
-        self.kw_model = kw_model
+    def are_you_satisfied(self, partner_good, partner_type, proportions):
 
-    def are_you_satisfied(self, proposed_object, type_of_other_agent, proportions):
-
-        if proposed_object == self.C:
+        if partner_good == self.C:
             return True
         else:
             return np.random.choice([True, False])
 
     def consume(self):
 
-        self.consumption = self.in_hand == self.C
+        self.consumption = self.H == self.C
 
         if self.consumption:
-            self.in_hand = self.P
+            self.H = self.P
 
     def proceed_to_exchange(self, new_object):
 
         if new_object is not None:
             self.exchange = True
-            self.in_hand = new_object
+            self.H = new_object
 
         else:
             self.exchange = False
@@ -72,7 +66,7 @@ class Agent(object):
 
     def match_departure_good(self, subject_good):
 
-        self.in_hand = subject_good
+        self.H = subject_good
 
     def probability_of_responding(self, subject_response, partner_good, partner_type, proportions):
 
@@ -85,10 +79,10 @@ class Agent(object):
 
         if subject_choice and partner_choice:
 
-            self.in_hand = partner_good
+            self.H = partner_good
 
-            if self.in_hand == self.C:
-                    self.in_hand = self.P
+            if self.H == self.C:
+                    self.H = self.P
 
 
 def main():
@@ -96,10 +90,9 @@ def main():
     parameters = {
         "t_max": 500,
         "agent_parameters": {"beta": 0.9, "u": 0.2},
-        "role_repartition": np.array([500, 500, 500]),
+        "repartition_of_roles": np.array([500, 500, 500]),
         "storing_costs": np.array([0.01, 0.04, 0.09]),
-        "kw_model": ModelA,
-        "agent_model": Agent,
+        "agent_model": StupidAgent,
     }
 
     backup = \

@@ -1,16 +1,7 @@
-from AbstractAgent import Agent
+from stupid_agent import StupidAgent
 
 
-class StupidAgent(Agent):
-
-    name = "Stupid agent"
-
-    def __init__(self, **kwargs):
-
-        super().__init__(**kwargs)
-
-
-class TotalGogol(Agent):
+class TotalGogol(StupidAgent):
 
     ''' Encore pire'''
 

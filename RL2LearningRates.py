@@ -91,7 +91,7 @@ class RL2Agent(Agent):
     def are_you_satisfied(self, proposed_object, type_of_other_agent, propositions):
         self.select_strategy()
         agreeing = self.strategies[self.followed_strategy,
-                                   self.absolute_to_relative[self.in_hand],
+                                   self.absolute_to_relative[self.H],
                                    self.absolute_to_relative[proposed_object]]
 
         return agreeing
@@ -108,7 +108,7 @@ class RL2Agent(Agent):
 
     def compute_utility(self):
         self.utility = \
-            0.5 + self.consumption / 2 - self.storing_costs[self.in_hand]
+            0.5 + self.consumption / 2 - self.storing_costs[self.H]
 
         # Be sure that utility lies between 0 and 1
         assert 0 <= self.utility <= 1

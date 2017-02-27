@@ -1,8 +1,7 @@
 import numpy as np
-from KWModels import ModelA
 from Economy import Economy
-from analysis import represent_results
-from AbstractAgent import Agent
+from graph import represent_results
+from stupid_agent import StupidAgent
 from module.useful_functions import softmax
 from save import save
 
@@ -14,11 +13,15 @@ RL with reinforcement of strategies understood as Game Theory does
 '''
 
 
-class RLForwardAgent(Agent):
+class RLForwardAgent(StupidAgent):
     name = "RLForward"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+        assert len(self.storing_costs) == 3, "RLForward Agent can not handle only 3 goods."
+
+        self.T = [i for i in range(3) if i != self.P and i != self.C][0]
 
         # ----- RL2 PARAMETERS ---- #
 
@@ -59,9 +62,9 @@ class RLForwardAgent(Agent):
             # for every type of agent he could be matched with
             for j in range(3):
                 # For each object this 'partner' could have in hand (production, third good)
-                for k in [self.kw_model.roles[j][0], self.kw_model.roles[j][2]]:
+                for k in [i for i in range(3) if i != j]:
                     if initial_values is not None:
-                    # Key is composed by good in hand, partner type, good in partner's hand
+                        # Key is composed by good in hand, partner type, good in partner's hand
                         strategies[(i, j, k)] = initial_values[idx, :].copy()
                     else:
                         strategies[(i, j, k)] = np.zeros(2)
@@ -92,7 +95,7 @@ class RLForwardAgent(Agent):
 
         # Anchorage is at the maximum of the storing costs so the worst option leads to a utility of 0.
         utility = \
-            max(self.storing_costs) + self.u * self.consumption - self.storing_costs[self.in_hand]
+            max(self.storing_costs) + self.u * self.consumption - self.storing_costs[self.H]
 
         # Be sure that utility lies between 0 and 1
         assert 0 <= utility <= 1
@@ -109,7 +112,7 @@ class RLForwardAgent(Agent):
 
         if not self.consumption:
 
-            forward_value = max(self.strategies[(self.in_hand, partner_type, partner_good)]) \
+            forward_value = max(self.strategies[(self.H, partner_type, partner_good)]) \
                 - self.strategies[self.matching_triplet][self.followed_strategy]
 
             self.strategies[self.matching_triplet][self.followed_strategy] += \
@@ -117,14 +120,14 @@ class RLForwardAgent(Agent):
 
     def select_strategy(self, partner_good, partner_type):
 
-        relevant_strategies_values = self.strategies[(self.in_hand,  partner_type, partner_good)]
+        relevant_strategies_values = self.strategies[(self.H,  partner_type, partner_good)]
         # Obtain probability of using this or that strategy by a softmax,
         # and then select a strategy according to these probabilities
         p_values = softmax(relevant_strategies_values, self.temp)
         self.followed_strategy = np.random.choice(np.arange(len(relevant_strategies_values)), p=p_values)
 
         # Memory for learning
-        self.matching_triplet = self.in_hand, partner_type, partner_good
+        self.matching_triplet = self.H, partner_type, partner_good
 
     # ----------  FOR OPTIMIZATION PART ---------- #
     
@@ -132,7 +135,7 @@ class RLForwardAgent(Agent):
 
         self.learn(partner_good=partner_good, partner_type=partner_type)
 
-        relevant_strategies_values = self.strategies[(self.in_hand, partner_type, partner_good)]
+        relevant_strategies_values = self.strategies[(self.H, partner_type, partner_good)]
         p_values = softmax(relevant_strategies_values, self.temp)
         
         # Assume there is only 2 p-values, return the one corresponding to the choice of the subject
@@ -141,13 +144,13 @@ class RLForwardAgent(Agent):
     def do_the_encounter(self, subject_choice, partner_choice, partner_good, partner_type):
 
         # Memory for learning
-        self.matching_triplet = self.in_hand, partner_type, partner_good
+        self.matching_triplet = self.H, partner_type, partner_good
 
         self.followed_strategy = subject_choice
         
         if subject_choice and partner_choice:
             
-            self.in_hand = partner_good
+            self.H = partner_good
 
         self.consume()
 
@@ -161,10 +164,9 @@ def main():
         "t_max": 500,
         "agent_parameters": {"alpha": 0.2, "temp": 0.01, "gamma": 0.2,
                              "q_values": np.ones((12, 2))},
-        "role_repartition": np.array([500, 500, 500]),
+        "repartition_of_roles": np.array([500, 500, 500]),
         "storing_costs": storing_costs,
         "u": u,
-        "kw_model": ModelA,
         "agent_model": RLForwardAgent,
     }
 

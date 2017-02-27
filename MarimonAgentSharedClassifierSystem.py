@@ -1,69 +1,28 @@
 import numpy as np
-from os import path
 from itertools import product
-from tqdm import tqdm
-from pylab import plt
-from analysis import represent_results
-
-
-
-class ModelA(object):
-
-    roles = np.array([
-        [1, 0, 2],
-        [2, 1, 0],
-        [0, 2, 1]
-    ], dtype=int)
-
-    name = "ModelA"
+from graph import represent_results
+from Economy import Economy
+from stupid_agent import StupidAgent
 
 # --------------------------------------------------------------------------------------------------- #
 # -------------------------------- MARIMON AGENT ---------------------------------------------------- #
 # --------------------------------------------------------------------------------------------------- #
 
 
-class MarimonAgent(object):
+class MarimonAgent(StupidAgent):
 
     name = "Marimon"
 
-    def __init__(self, prod, cons, third, agent_type, idx, storing_costs, exchange_classifier_system,
-                 consumption_classifier_system, u):
-
-        # Production object (integer in [0, 1, 2])
-        self.P = prod
-
-        # Consumption object (integer in [0, 1, 2])
-        self.C = cons
-
-        # Other object (integer in [0, 1, 2])
-        self.T = third
-
-        # Type of agent (integer in [0, 1, 2])
-        self.type = agent_type
-
-        # Index of agent (more or less his name ; integer in [0, ..., n] with n : total number of agent)
-        self.idx = idx
-
-        # Utility derived from consumption
-        self.utility_derived_from_consumption = u
+    def __init__(self, prod, cons, exchange_classifier_system,
+                 consumption_classifier_system, storing_costs, u, idx):
+        
+        super().__init__(prod=prod, cons=cons, storing_costs=storing_costs, u=u, idx=idx)
 
         # Parameters for agent that could be different in nature depending on the agent model in use (Python dictionary)
         self.exchange_classifier_system = exchange_classifier_system
         self.consumption_classifier_system = consumption_classifier_system
 
-        # Storing costs (numpy array of size 3)
-        self.storing_costs = storing_costs
-
-        # Keep a trace for time t if the agent consumed or not.
-        self.consumption = 0
-
-        # Keep a trace whether the agent proceed to an exchange
-        self.exchange = None
-
-        # Object an agent has in hand
-        self.in_hand = self.P
-
-        self.previous_object_in_hand = self.P
+        self.previous_object_H = self.P
 
         self.best_exchange_classifier = None
         self.best_consumption_classifier = None
@@ -73,12 +32,12 @@ class MarimonAgent(object):
 
         self.utility = None
 
-    def wants_to_exchange(self, proposed_object):
+    def are_you_satisfied(self, partner_good, partner_type, proportions):
 
         # Choose the right classifier
 
         # Equation 5
-        m_index = self.exchange_classifier_system.get_potential_bidders(self.in_hand, proposed_object)
+        m_index = self.exchange_classifier_system.get_potential_bidders(self.H, partner_good)
 
         # Equation 6
         self.best_exchange_classifier = self.exchange_classifier_system.get_best_classifier(m_index)
@@ -90,23 +49,13 @@ class MarimonAgent(object):
 
         return exchange_decision
 
-    def proceed_to_exchange(self, new_object):
-
-        if new_object is not None:
-
-            self.exchange = True
-            self.in_hand = new_object
-
-        else:
-            self.exchange = False
-
     def consume(self):
 
         # Re-initialize
         self.consumption = 0
 
         # Equation 7
-        m_index = self.consumption_classifier_system.get_potential_bidders(self.in_hand)
+        m_index = self.consumption_classifier_system.get_potential_bidders(self.H)
 
         # Equation 8
         new_best_consumption_classifier = self.consumption_classifier_system.get_best_classifier(m_index)
@@ -116,19 +65,19 @@ class MarimonAgent(object):
         if new_best_consumption_classifier.decision == 1:
 
             # And the agent has his consumption good
-            if self.in_hand == self.C:
+            if self.H == self.C:
                 self.consumption = 1
 
             # If he decided to consume, he produce a new unity of his production good
-            self.in_hand = self.P
+            self.H = self.P
 
         self.proceed_to_payments(new_best_consumption_classifier)
 
         # ----- FOR FUTURE ------- #
 
         # Compute utility
-        self.utility = self.utility_derived_from_consumption * self.consumption \
-            - self.storing_costs[self.in_hand]
+        self.utility = self.u * self.consumption \
+            - self.storing_costs[self.H]
 
         # Will be the next best consumption classifier to update its weights
         self.best_consumption_classifier = new_best_consumption_classifier
@@ -390,21 +339,13 @@ class ConsumptionClassifier(Classifier):
 # --------------------------------------------------------------------------------------------------- #
 
 
-class Economy(object):
+class MarimonEconomy(Economy):
 
-    def __init__(self, role_repartition, t_max, storing_costs,
-                 b11, b12, b21, b22, initial_strength, u,
-                 kw_model=ModelA):
-
-        self.t_max = t_max
-
-        self.role_repartition = role_repartition
-
-        self.storing_costs = storing_costs
-
-        self.n_agent = sum(role_repartition)
-
-        self.kw_model = kw_model
+    def __init__(self, repartition_of_roles, t_max, storing_costs,
+                 b11, b12, b21, b22, initial_strength, u):
+        
+        super().__init__(repartition_of_roles=repartition_of_roles, t_max=t_max, storing_costs=storing_costs,
+                         agent_model=MarimonAgent, u=u)
 
         self.exchange_classifier_systems = []
         self.consumption_classifier_systems = []
@@ -423,25 +364,20 @@ class Economy(object):
                     initial_strength=initial_strength)
             )
 
-        self.u = u
-
-        self.agents = None
-
     def create_agents(self):
 
         agents = []
 
         agent_idx = 0
 
-        for agent_type, n in enumerate(self.role_repartition):
+        for agent_type, n in enumerate(self.repartition_of_roles):
 
-            i, j, k = self.kw_model.roles[agent_type]
+            i, j = self.roles[agent_type]
 
             for ind in range(n):
                 a = MarimonAgent(
-                    prod=i, cons=j, third=k,
+                    prod=i, cons=j,
                     storing_costs=self.storing_costs,
-                    agent_type=agent_type,
                     idx=agent_idx,
                     exchange_classifier_system=self.exchange_classifier_systems[agent_type],
                     consumption_classifier_system=self.consumption_classifier_systems[agent_type],
@@ -453,196 +389,18 @@ class Economy(object):
 
         return agents
 
-    def play(self):
-
-        self.agents = self.create_agents()
-        _ = self.agents
-
-        # For future back up
-        back_up = {
-            "exchanges": [],
-            "n_exchanges": [],
-            "consumption": [],
-            "third_good_acceptance": [],
-            "proportions": []
-        }
-
-        for t in tqdm(range(self.t_max)):
-
-            # Containers for future backup
-            exchanges = {(0, 1): 0, (0, 2): 0, (1, 2): 0}
-            n_exchange = 0
-            consumption = 0
-            third_good_acceptance = np.zeros(3)
-            proposition_of_third_object = np.zeros(3)
-
-            # ----- COMPUTE PROPORTIONS ----- #
-            # Container for proportions of agents having this or that in hand according to their type
-            #  - rows: type of agent
-            # - columns: type of good
-
-            proportions = np.zeros((3, 3))
-            for i in self.agents:
-                proportions[i.type, i.in_hand] += 1
-
-            proportions[:] = proportions / (self.n_agent//3)
-
-            # --------------------------------- #
-
-            # ---------- MANAGE EXCHANGES ----- #
-            # Take a random order among the indexes of the agents.
-            agent_pairs = np.random.choice(self.n_agent, size=(self.n_agent // 2, 2), replace=False)
-
-            for i, j in agent_pairs:
-
-                i_object = _[i].in_hand
-                j_object = _[j].in_hand
-
-                # Each agent is "initiator' of an exchange during one period.
-                i_agreeing = _[i].wants_to_exchange(j_object)
-                j_agreeing = _[j].wants_to_exchange(i_object)
-
-                # ---- STATS ------ #
-                # Consider particular case of offering third object
-                if j_object == _[i].T and i_object == _[i].P:
-                    proposition_of_third_object[_[i].type] += 1
-
-                if i_object == _[j].T and j_object == _[j].P:
-                    proposition_of_third_object[_[j].type] += 1
-                # ------------ #
-
-                # If both agents agree to exchange...
-                if i_agreeing and j_agreeing:
-
-                    # ---- STATS ------ #
-                    # Consider particular case of offering third object
-                    if j_object == _[i].T and i_object == _[i].P:
-                        third_good_acceptance[_[i].type] += 1
-
-                    if i_object == _[j].T and j_object == _[j].P:
-                        third_good_acceptance[_[j].type] += 1
-
-                    # ------------ #
-
-                    # ...exchange occurs
-                    _[i].proceed_to_exchange(j_object)
-                    _[j].proceed_to_exchange(i_object)
-
-                    # ---- STATS ------ #
-                    exchange_type = tuple(sorted([i_object, j_object]))
-                    if i_object != j_object:
-                        exchanges[exchange_type] += 1
-                        n_exchange += 1
-                        # ----------- #
-
-                else:
-
-                    _[i].proceed_to_exchange(None)
-                    _[j].proceed_to_exchange(None)
-
-                # Each agent consumes at the end of encounter and adapt his behavior (or not).
-                _[i].consume()
-                _[j].consume()
-
-                # Keep a trace from utilities
-                consumption += _[i].consumption + _[j].consumption
-
-            # ----- FOR FUTURE BACKUP ----- #
-            for key in exchanges.keys():
-                # Avoid division by zero
-                if n_exchange > 0:
-                    exchanges[key] /= n_exchange
-                else:
-                    exchanges[key] = 0
-
-            for i in range(3):
-                # Avoid division by zero
-                if proposition_of_third_object[i] > 0:
-                    third_good_acceptance[i] = third_good_acceptance[i] / proposition_of_third_object[i]
-
-                else:
-                    third_good_acceptance[i] = 0
-
-            consumption /= self.n_agent
-
-            # For back up
-            back_up["proportions"].append(proportions.copy())
-            back_up["exchanges"].append(exchanges.copy())
-            back_up["consumption"].append(consumption)
-            back_up["n_exchanges"].append(n_exchange)
-            back_up["third_good_acceptance"].append(third_good_acceptance.copy())
-
-            # ----------------------------- #
-
-        return back_up
-
-
-def plot_proportions(proportions, fig_name):
-
-    # Container for proportions of agents having this or that in hand according to their type
-    #  - rows: type of agent
-    # - columns: type of good
-
-    fig = plt.figure(figsize=(25, 12))
-    fig.patch.set_facecolor('white')
-
-    n_lines = 3
-    n_columns = 1
-
-    x = np.arange(len(proportions))
-
-    for agent_type in range(3):
-
-        # First subplot
-        ax = plt.subplot(n_lines, n_columns, agent_type + 1)
-        ax.set_title("Proportion of agents of type {} having good 1, 2, 3 in hand\n".format(agent_type + 1))
-
-        y0 = []
-        y1 = []
-        y2 = []
-        for proportions_at_t in proportions:
-            y0.append(proportions_at_t[agent_type, 0])
-            y1.append(proportions_at_t[agent_type, 1])
-            y2.append(proportions_at_t[agent_type, 2])
-
-        ax.set_ylim([-0.02, 1.02])
-
-        ax.plot(x, y0, label="Good 1", linewidth=2)
-        ax.plot(x, y1, label="Good 2", linewidth=2)
-        ax.plot(x, y2, label="Good 3", linewidth=2)
-        ax.legend()
-
-    plt.tight_layout()
-
-    plt.savefig(filename=fig_name)
-
 
 def main():
 
     parameters = {
         "t_max": 500,
         "u": 100, "b11": 0.025, "b12": 0.025, "b21": 0.25, "b22": 0.25, "initial_strength": 0,
-        "role_repartition": np.array([50, 50, 50]),
+        "repartition_of_roles": np.array([50, 50, 50]),
         "storing_costs": np.array([0.1, 1., 20.]),
-        "kw_model": ModelA
     }
 
-    e = Economy(**parameters)
-    backup = e.play()
-
-    with open(path.expanduser("~/Desktop/save.txt"), 'w') as f:
-        for i in range(3):
-            for j in e.exchange_classifier_systems[i].collection_of_classifiers:
-                f.write(j.get_info())
-                f.write("\n")
-            f.write("\n")
-
-    fig_name = path.expanduser("~/Desktop/KW_Marimon_Agents.pdf")
-    init_fig_name = fig_name.split(".")[0]
-    i = 2
-    while path.exists(fig_name):
-        fig_name = "{}{}.pdf".format(init_fig_name, i)
-        i += 1
+    e = MarimonEconomy(**parameters)
+    backup = e.run()
 
     parameters["agent_parameters"] = {"u": parameters["u"], "b11": parameters["b11"], "b12": parameters["b12"],
                                       "b21": parameters["b21"], "b22": parameters["b22"],
@@ -650,9 +408,7 @@ def main():
 
     parameters["agent_model"] = type("", (object, ), {"name": "Marimon"})()
 
-    represent_results(backup=backup, parameters=parameters, fig_name=fig_name)
-
-    plot_proportions(proportions=backup["proportions"], fig_name=fig_name.split(".")[0] + "_proportions.pdf")
+    represent_results(backup=backup, parameters=parameters)
 
 
 if __name__ == "__main__":
