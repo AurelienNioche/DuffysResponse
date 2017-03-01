@@ -2,16 +2,19 @@ import numpy as np
 import hyperopt as op
 import csv
 from tqdm import tqdm
+import json
+import itertools as it
 from multiprocessing.pool import ThreadPool
 from multiprocessing import cpu_count
 from data_manager import import_data
-from RLForward import RLForwardAgent
-from RLForward2 import RLForwardAgent2
-from RL import RLAgent as RLStrategicAgent
+from ForwardRL import ForwardRLAgent
+from RL2Steps import RL2StepsAgent
+from StrategicRL import StrategicRLAgent
 from stupidy_is_better import TotalGogol
 from stupid_agent import StupidAgent
 from DuffyAgent import DuffyAgent
 from KwAgent import KwAgent
+from FrequentistAgent import FrequentistAgent
 
 
 class PerformanceComputer(object):
@@ -32,10 +35,11 @@ class PerformanceComputer(object):
         self.model = model
 
         self.func = {
-            "RLForward": self.get_FRL_model,
-            "RLForward2": self.get_FRL2_model,
-            "RLStrategic": self.get_SRL_model,
-            "NonParametrizedAgent": self.get_non_parametrized_model,
+            "ForwardRL": self.get_FRL_model,
+            "RL2Steps": self.get_RL2Steps_model,
+            "StrategicRL": self.get_SRL_model,
+            "Frequentist": self.get_frequentist_model,
+            "NonParametrized": self.get_non_parametrized_model,
         }
 
         self.non_parametrized_model = {
@@ -48,87 +52,7 @@ class PerformanceComputer(object):
         model = self.func[self.model](*args)
         squares_sum = self.compute_sum_errors_squares(model)
         return squares_sum
-
-    def get_FRL_model(self, *args):
-
-        alpha, temp, gamma = args[0][:3]
-        q_values = np.asarray(args[0][3:]).reshape((12, 2))
-
-        model = RLForwardAgent(
-            prod=self.prod,
-            cons=self.cons,  # Suppose we are in the KW's Model A
-            u=self.raw_u,
-            beta=self.beta,
-            storing_costs=self.raw_storing_costs,
-            agent_parameters={
-                "alpha": alpha,
-                "temp": temp,
-                "gamma": gamma,
-                "q_values": q_values
-            }
-        )
-
-        return model
-
-    def get_FRL2_model(self, *args):
-
-        alpha, temp, gamma = args[0][:3]
-        q_values = np.asarray(args[0][3:]).reshape((6, 2))
-
-        model = RLForwardAgent2(
-            prod=self.prod,
-            cons=self.cons,  # Suppose we are in the KW's Model A
-            u=self.raw_u,
-            beta=self.beta,
-            storing_costs=self.raw_storing_costs,
-            agent_parameters={
-                "alpha": alpha,
-                "temp": temp,
-                "gamma": gamma,
-                "q_values": q_values
-            }
-        )
-
-        return model
-
-    def get_SRL_model(self, *args):
-
-        try:
-
-            alpha, temp = args[0][:2]
-            strategy_values = np.asarray(args[0][2:])
-        except:
-            print(args)
-            raise Exception
-
-        model = RLStrategicAgent(
-            prod=self.prod,
-            cons=self.cons,  # Suppose we are in the KW's Model A
-            storing_costs=self.raw_storing_costs,
-            u=self.raw_u,
-            agent_parameters={
-                "alpha": alpha,
-                "temp": temp,
-                "strategy_values": strategy_values,
-            }
-        )
-
-        return model
-
-    def get_non_parametrized_model(self, args):
-
-        model_name = args[0][0]
-
-        model = self.non_parametrized_model[model_name](
-                prod=self.prod,
-                cons=self.cons,  # Suppose we are in the KW's Model A
-                storing_costs=self.raw_storing_costs,
-                u=self.raw_u,
-                beta=self.beta
-            )
-
-        return model
-
+    
     def compute_sum_errors_squares(self, model):
 
         squares_list = []
@@ -159,7 +83,7 @@ class PerformanceComputer(object):
 
         squares_sum = self.run(args)
 
-        if "NonParametrizedAgent" in args:
+        if "NonParametrized" in args:
             degrees_of_freedom = 0
         else:
             degrees_of_freedom = len(args)
@@ -172,6 +96,106 @@ class PerformanceComputer(object):
     def bic_formula(squares_sum, n_trials, degrees_of_freedom):
 
         return n_trials * np.log(squares_sum / n_trials) + np.log(n_trials) * degrees_of_freedom
+
+    # ---- GET MODELS --------------- #
+
+    def get_FRL_model(self, *args):
+
+        alpha, temp, gamma = args[0][:3]
+        q_values = np.asarray(args[0][3:]).reshape((12, 2))
+
+        model = ForwardRLAgent(
+            prod=self.prod,
+            cons=self.cons,  # Suppose we are in the KW's Model A
+            u=self.raw_u,
+            beta=self.beta,
+            storing_costs=self.raw_storing_costs,
+            agent_parameters={
+                "alpha": alpha,
+                "temp": temp,
+                "gamma": gamma,
+                "q_values": q_values
+            }
+        )
+
+        return model
+
+    def get_RL2Steps_model(self, *args):
+
+        alpha, temp, gamma = args[0][:3]
+        q_values = np.asarray(args[0][3:]).reshape((6, 2))
+
+        model = RL2StepsAgent(
+            prod=self.prod,
+            cons=self.cons,  # Suppose we are in the KW's Model A
+            u=self.raw_u,
+            beta=self.beta,
+            storing_costs=self.raw_storing_costs,
+            agent_parameters={
+                "alpha": alpha,
+                "temp": temp,
+                "gamma": gamma,
+                "q_values": q_values
+            }
+        )
+
+        return model
+
+    def get_SRL_model(self, *args):
+
+        alpha, temp = args[0][:2]
+        strategy_values = np.asarray(args[0][2:])
+
+        model = StrategicRLAgent(
+            prod=self.prod,
+            cons=self.cons,  # Suppose we are in the KW's Model A
+            storing_costs=self.raw_storing_costs,
+            u=self.raw_u,
+            agent_parameters={
+                "alpha": alpha,
+                "temp": temp,
+                "strategy_values": strategy_values,
+            }
+        )
+
+        return model
+
+    def get_frequentist_model(self, *args):
+
+        encounter_memory_span, acceptance_memory_span, temp = args[0][:3]
+        n_exchanges = len(args[0][3:]) // 2
+        encounter_probabilities = np.asarray(args[0][3:n_exchanges + 3])
+        acceptance_probabilities = np.asarray(args[0][n_exchanges + 3:])
+        
+        model = FrequentistAgent(
+            prod=self.prod,
+            cons=self.cons,
+            storing_costs=self.raw_storing_costs,
+            u=self.raw_u,
+            agent_parameters={
+                "encounter_memory_span": encounter_memory_span,
+                "acceptance_memory_span": acceptance_memory_span,
+                "temp": temp,
+                "encounter_probabilities": encounter_probabilities,
+                "acceptance_probabilities": acceptance_probabilities
+            }
+        )
+        
+        return model
+        
+    def get_non_parametrized_model(self, args):
+
+        model_name = args[0][0]
+
+        model = self.non_parametrized_model[model_name](
+                prod=self.prod,
+                cons=self.cons,  # Suppose we are in the KW's Model A
+                storing_costs=self.raw_storing_costs,
+                u=self.raw_u,
+                beta=self.beta
+            )
+
+        return model
 
 
 class Optimizer(object):
@@ -186,16 +210,18 @@ class Optimizer(object):
             self.subjects_idx = np.arange(len(self.data))
 
         # ------ Optimization parameters ------- #
-
-        self.random_evaluations = 5
-        self.max_evaluations = 10
+        with open("parameters/optimization_parameters.json") as file:
+            param = json.load(file)
+        self.random_evaluations = param["random_evaluations"]
+        self.max_evaluations = param["max_evaluations"]
 
         self.n_processes = cpu_count() * 4
 
         self._create_search_space = {
-            "RLForward": self._create_search_space_for_RLForward,
-            "RLForward2": self._create_search_space_for_RLForward2,
-            "RLStrategic": self._create_search_space_for_RLStrategic,
+            "ForwardRL": self._create_search_space_for_ForwardRL,
+            "RL2Steps": self._create_search_space_for_RL2Steps,
+            "StrategicRL": self._create_search_space_for_StrategicRL,
+            "Frequentist": self._create_search_space_for_Frequentist,
         }
 
         self.models = self._create_search_space.keys()
@@ -238,9 +264,6 @@ class Optimizer(object):
 
     def run_for_a_single_agent(self, model, idx):
 
-        # Create search space depending of the model
-        search_space, parameters = self._create_search_space[model]()
-
         results = self._compute(args={
             "i": idx,
             "model": model
@@ -264,8 +287,9 @@ class Optimizer(object):
         results["bic"] = bic_value
         results["best"] = best
 
-        # Update the progression bar
-        args["p_bar"].update()
+        if "p_bar" in args:
+            # Update the progression bar
+            args["p_bar"].update()
 
         return results
 
@@ -296,7 +320,7 @@ class Optimizer(object):
 
     # --------------------- SEARCH SPACE ------------------------------ #
 
-    def _create_search_space_for_RLForward(self, ind):
+    def _create_search_space_for_ForwardRL(self, ind):
 
         parameters = [
             "alpha",
@@ -328,7 +352,7 @@ class Optimizer(object):
 
         return search_space, parameters
 
-    def _create_search_space_for_RLForward2(self, ind):
+    def _create_search_space_for_RL2Steps(self, ind):
 
         parameters = [
             "alpha",
@@ -342,7 +366,7 @@ class Optimizer(object):
             for j in range(3):
                 # Key is composed by good in hand, partner type, good in partner's hand
                 for e in [0, 1]:
-                    parameters.append("q{}{}{}".format(i, j, e))
+                    parameters.append("({}, {})".format(i, j, e))
 
         search_space = []
 
@@ -358,7 +382,7 @@ class Optimizer(object):
 
         return search_space, parameters
 
-    def _create_search_space_for_RLStrategic(self, ind):
+    def _create_search_space_for_StrategicRL(self, ind):
 
         parameters = [
             "alpha",
@@ -386,6 +410,55 @@ class Optimizer(object):
 
         return search_space, parameters
 
+    def _create_search_space_for_Frequentist(self, ind):
+
+        parameters = [
+            "encounter_memory_span",
+            "acceptance_memory_span",
+            "temp"
+        ]
+
+        n_goods = 3
+
+        for i in it.permutations(range(n_goods), r=2):
+            parameters.append(
+                "encounter{}".format(i)
+            )
+
+        for i in it.permutations(range(n_goods), r=2):
+            parameters.append(
+                "acceptance{}".format(i)
+            )
+
+        t_max = len(self.data[ind]["subject_good"])
+
+        search_space = []
+
+        for i in parameters:
+
+            if i == 'temp':
+
+                minimum, maximum = 0.01, 1.
+                search_space.append(
+                    op.hp.uniform(i, minimum, maximum)
+                )
+
+            elif i in ["encounter_memory_span", "acceptance_memory_span"]:
+
+                minimum, maximum = 1, t_max
+                search_space.append(
+                    op.hp.quniform(i, minimum, maximum, 1)
+                )
+
+            else:
+
+                minimum, maximum = 0., 1.
+                search_space.append(
+                    op.hp.uniform(i, minimum, maximum)
+                )
+
+        return search_space, parameters
+
 
 class PerformanceComputerWithoutParameters(object):
 
@@ -404,7 +477,7 @@ class PerformanceComputerWithoutParameters(object):
         backup = []
 
         for i in self.subjects_idx:
-            p = PerformanceComputer(individual_data=self.data[i], model="NonParametrizedAgent")
+            p = PerformanceComputer(individual_data=self.data[i], model="NonParametrized")
             squares_sum, bic_value = p.evaluate((model, ))
 
             # Put results in a dictionary
@@ -520,7 +593,9 @@ class ModelComparison(object):
 
 
 def comparison_multi_models(
-        data, model_to_test=("RLForward2", "KW", "Duffy", "TotalGogol", "StupidAgent", "RLStrategic", "RLForward")):
+        data, model_to_test=(
+                "Frequentist", "RL2Steps", "KW", "Duffy", "TotalGogol", "StupidAgent", "StrategicRL", "ForwardRL",
+        )):
 
     m = ModelComparison(data=data, model_to_test=model_to_test)
     m.run()
@@ -535,7 +610,7 @@ def test_single_non_parametric_model(model, data):
 
 def test_single_agent_with_non_parametric_model(model, data, idx):
 
-    p = PerformanceComputer(individual_data=data[idx], model="NonParametrizedAgent")
+    p = PerformanceComputer(individual_data=data[idx], model="NonParametrized")
     squares_sum, bic_value = p.evaluate((model,))
 
     print("squares_sum", squares_sum)
@@ -554,6 +629,7 @@ def main():
     data = import_data()
     comparison_multi_models(data=data)
     # test_single_agent_with_non_parametric_model(model="Duffy", data=data, idx=0)
+    # test_single_agent_with_parametric_model(model="Frequentist", data=data, idx=0)
 
 
 if __name__ == "__main__":

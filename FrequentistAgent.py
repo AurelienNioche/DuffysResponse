@@ -16,17 +16,31 @@ class FrequentistAgent(StupidAgent):
 
         self.n_goods = len(self.storing_costs)
 
-        self.memory_span = self.agent_parameters["memory_span"]
+        self.memory_span = {
+            "encounter": self.agent_parameters["encounter_memory_span"],
+            "acceptance": self.agent_parameters["acceptance_memory_span"]
+        }
         self.temp = self.agent_parameters["temp"]
 
-        self.encounter = self.get_acceptance_or_encounter_dic(n_goods=self.n_goods)
-        self.acceptance = self.get_acceptance_or_encounter_dic(n_goods=self.n_goods)
+        self.probabilities = {
+            "encounter": self.get_acceptance_or_encounter_dic(n_goods=self.n_goods),
+            "acceptance": self.get_acceptance_or_encounter_dic(n_goods=self.n_goods)
+        }
 
-        self.memory_encounter = self.get_memory_dic(n_goods=self.n_goods)
-        self.memory_acceptance = self.get_memory_dic(n_goods=self.n_goods)
+        self.memory = {
+            "encounter": self.get_memory_dic(n_goods=self.n_goods),
+            "acceptance": self.get_memory_dic(n_goods=self.n_goods)
+        }
 
         self.in_hand_partner_good_pair = None
         self.accept = None
+
+        if {"encounter_probabilities", "acceptance_probabilities"}.issubset(self.agent_parameters.keys()):
+
+            self.set_initial_probabilities(
+                self.agent_parameters["encounter_probabilities"],
+                self.agent_parameters["acceptance_probabilities"]
+            )
 
     @staticmethod
     def get_acceptance_or_encounter_dic(n_goods):
@@ -46,6 +60,13 @@ class FrequentistAgent(StupidAgent):
             memory[i] = []
 
         return memory
+
+    def set_initial_probabilities(self, initial_encounter_probabilities, initial_acceptance_probabilities):
+
+        for i, key in enumerate(sorted(self.probabilities["encounter"].keys())):
+
+            self.probabilities["encounter"][key] = initial_encounter_probabilities[i]
+            self.probabilities["acceptance"][key] = initial_acceptance_probabilities[i]
 
     def are_you_satisfied(self, partner_good, partner_type, proportions):
 
@@ -70,17 +91,26 @@ class FrequentistAgent(StupidAgent):
         v = np.zeros(2)
 
         # If refuses
-        if self.acceptance[(self.P, self.C)] * self.encounter[(self.P, self.C)] > 0:
+        probability_direct_exchange = \
+            self.probabilities["acceptance"][(self.P, self.C)] * \
+            self.probabilities["encounter"][(self.P, self.C)]
+
+        if probability_direct_exchange > 0:
             v[0] = \
                 self.u - self.storing_costs[self.P] / \
-                (self.acceptance[(self.P, self.C)] * self.encounter[(self.P, self.C)])
+                probability_direct_exchange
         else:
             v[0] = 0
+
         # If accepts
-        if self.acceptance[(partner_good, self.C)] * self.encounter[(partner_good, self.C)] > 0:
+        probability_indirect_exchange = \
+            self.probabilities["acceptance"][(partner_good, self.C)] * \
+            self.probabilities["encounter"][(partner_good, self.C)]
+
+        if probability_indirect_exchange > 0:
             v[1] = \
                 self.u - self.storing_costs[partner_good] / \
-                (self.acceptance[(partner_good, self.C)] * self.encounter[(partner_good, self.C)])
+                probability_indirect_exchange
         else:
             v[1] = 0
 
@@ -101,24 +131,24 @@ class FrequentistAgent(StupidAgent):
 
     def learn_from_encounter(self):
 
-        for k in self.encounter.keys():
+        for k in self.probabilities["encounter"].keys():
             cond = int(k == self.in_hand_partner_good_pair)
-            self.memory_encounter[k].append(cond)
-            if len(self.memory_encounter[k]) > self.memory_span:
-                self.memory_encounter[k] = self.memory_encounter[k][1:]
-            self.encounter[k] = np.mean(self.memory_encounter[k])
+            self.memory["encounter"][k].append(cond)
+            if len(self.memory["encounter"][k]) > self.memory_span:
+                self.memory["encounter"][k] = self.memory["encounter"][k][1:]
+            self.probabilities["encounter"][k] = np.mean(self.memory["encounter"][k])
 
     def learn_from_result(self):
 
         if self.accept:
 
             successful = int(self.H != self.in_hand_partner_good_pair[0])
-            self.memory_acceptance[self.in_hand_partner_good_pair].append(successful)
-            if len(self.memory_acceptance[self.in_hand_partner_good_pair]) > self.memory_span:
-                self.memory_acceptance[self.in_hand_partner_good_pair] = \
-                    self.memory_acceptance[self.in_hand_partner_good_pair][1:]
-            self.acceptance[self.in_hand_partner_good_pair] = \
-                np.mean(self.memory_acceptance[self.in_hand_partner_good_pair])
+            self.memory["acceptance"][self.in_hand_partner_good_pair].append(successful)
+            if len(self.memory["acceptance"][self.in_hand_partner_good_pair]) > self.memory_span:
+                self.memory["acceptance"][self.in_hand_partner_good_pair] = \
+                    self.memory["acceptance"][self.in_hand_partner_good_pair][1:]
+            self.probabilities["acceptance"][self.in_hand_partner_good_pair] = \
+                np.mean(self.memory["acceptance"][self.in_hand_partner_good_pair])
 
 
 
@@ -129,7 +159,8 @@ def main():
     beta = 0.9
 
     agent_parameters = {
-        "memory_span": 250,
+        "acceptance_memory_span": 250,
+        "encounter_memory_span": 250,
         "temp": 0.01,
     }
 

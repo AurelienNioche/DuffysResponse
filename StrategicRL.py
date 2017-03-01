@@ -11,7 +11,7 @@ RL with reinforcement of strategies understood as Game Theory does
 '''
 
 
-class RLAgent(StupidAgent):
+class StrategicRLAgent(StupidAgent):
 
     name = "RL"
 
@@ -165,7 +165,7 @@ class RLAgent(StupidAgent):
 
 def test_agent():
 
-    a = RLAgent(
+    a = StrategicRLAgent(
         prod=1,
         cons=0,
         third=2,
@@ -190,7 +190,7 @@ def main():
         "repartition_of_roles": [500, 500, 500],
         "storing_costs": [0.01, 0.03, 0.09],
         "u": 1,
-        "agent_model": RLAgent
+        "agent_model": StrategicRLAgent
     }
 
     backup = \
