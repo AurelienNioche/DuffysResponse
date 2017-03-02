@@ -20,14 +20,22 @@ class Analyst(object):
 
         self.speculation_ratio = compute_speculation_ratio(data=self.data)
 
-    def compute_correlation_between_gamma_and_speculation(self):
+    def compute_correlation_between_model_parameters_and_speculation(self, model="Frequentist",
+                                                                     parameters=("encounter_memory_span",
+                                                                                 "acceptance_memory_span")):
 
-        gamma_list = self.get_best_parameter_for_every_agent(model="RLForward", parameter="gamma")
-        r, p_value = self.compute_correlation(
-            gamma_list,
-            self.speculation_ratio
-        )
-        print("Correlation between gamma and speculation: {:.2f} [p={:.3f}]".format(r, p_value))
+        msg = ""
+        for param in parameters:
+
+            parameter_list = self.get_best_parameter_for_every_agent(model=model, parameter=param)
+            r, p_value = self.compute_correlation(
+                parameter_list,
+                self.speculation_ratio
+            )
+            msg += "[{}] Correlation between {} and speculation: {:.2f} [p={:.3f}]".format(model, param, r, p_value)
+            msg += "\n"
+
+        return msg
 
     def get_best_parameter_for_every_agent(self, model, parameter):
 
@@ -77,8 +85,32 @@ class Analyst(object):
 def main():
 
     a = Analyst()
-    # a.compute_correlation_between_gamma_and_speculation()
     print(a.distribution_of_best_models())
+    print()
+    print(a.compute_correlation_between_model_parameters_and_speculation(
+        model="ForwardRL", parameters=(
+            "alpha",
+            "gamma",
+            "temp"
+        )))
+    print(a.compute_correlation_between_model_parameters_and_speculation(
+        model="RL2Steps", parameters=(
+            "alpha",
+            "gamma",
+            "temp"
+        )))
+    print(a.compute_correlation_between_model_parameters_and_speculation(
+        model="StrategicRL", parameters=(
+            "alpha",
+            "temp"
+        )))
+    print(a.compute_correlation_between_model_parameters_and_speculation(
+        model="Frequentist", parameters=(
+            "encounter_memory_span",
+            "acceptance_memory_span",
+            "temp"
+        )))
+
 if __name__ == "__main__":
 
     main()
