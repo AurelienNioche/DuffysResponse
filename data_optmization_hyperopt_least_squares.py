@@ -215,7 +215,7 @@ class Optimizer(object):
         self.random_evaluations = param["random_evaluations"]
         self.max_evaluations = param["max_evaluations"]
 
-        self.n_processes = cpu_count() * 4
+        self.n_processes = cpu_count()
 
         self._create_search_space = {
             "ForwardRL": self._create_search_space_for_ForwardRL,
@@ -366,7 +366,7 @@ class Optimizer(object):
             for j in range(3):
                 # Key is composed by good in hand, partner type, good in partner's hand
                 for e in [0, 1]:
-                    parameters.append("({}, {})".format(i, j, e))
+                    parameters.append("({}, {}, {})".format(i, j, e))
 
         search_space = []
 
@@ -523,10 +523,12 @@ class ModelComparison(object):
             else:
                 results[model] = without_parameters_eval.run(model)
 
-        self.print_results(results=results)
-        self.save(results=results)
+        summary = self.print_results(results=results)
+        self.save(results=results, summary=summary)
 
     def print_results(self, results):
+
+        msg = ""
 
         for model in self.model_to_test:
 
@@ -534,18 +536,23 @@ class ModelComparison(object):
 
                 data = [results[model][i][var] for i in range(len(self.subjects_idx))]
 
-                msg = "{} - {}: {:.2f} +/- {:.2f} [{:.2f}; {:.2f}]".format(
+                txt = "{} - {}: {:.2f} +/- {:.2f} [{:.2f}; {:.2f}]".format(
                     model, var,
                     np.mean(data),
                     np.std(data),
                     min(data), max(data)
                 )
-                print(msg)
-            print()
+                msg += txt + "\n"
+            msg += "\n"
 
-    def save(self, results):
+        return msg
+
+    def save(self, results, summary=None):
 
         np.save("../optimization.npy", results)
+
+        with open("../summary.txt") as file:
+            file.write(summary)
 
         with open('../optimization_individual.csv', 'w', newline='') as csvfile:
 
@@ -594,7 +601,7 @@ class ModelComparison(object):
 
 def comparison_multi_models(
         data, model_to_test=(
-                "Frequentist", "RL2Steps", "KW", "Duffy", "TotalGogol", "StupidAgent", "StrategicRL", "ForwardRL",
+                "RL2Steps", "Frequentist", "KW", "Duffy", "TotalGogol", "StupidAgent", "StrategicRL", "ForwardRL",
         )):
 
     m = ModelComparison(data=data, model_to_test=model_to_test)
