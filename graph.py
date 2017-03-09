@@ -118,7 +118,7 @@ class GraphicDesigner(object):
             self.parameters["agent_parameters"] = None
         msg = \
             "Agent model: {}; \n \n" \
-            "Agent parameters: {}; \n \n" \
+            "Agent parameters: \n {}; \n \n" \
             "Repartition of roles: {}; \n \n " \
             "Trials: {}. \n \n".format(
                 self.parameters["agent_model"].name,

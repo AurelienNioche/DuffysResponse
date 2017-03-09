@@ -56,6 +56,7 @@ class StupidAgent(object):
     def proceed_to_exchange(self, new_object):
 
         if new_object is not None:
+
             self.exchange = True
             self.H = new_object
 

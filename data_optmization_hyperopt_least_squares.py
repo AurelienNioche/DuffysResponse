@@ -634,9 +634,9 @@ def test_single_agent_with_parametric_model(model, data, idx):
 def main():
 
     data = import_data()
-    comparison_multi_models(data=data)
+    # comparison_multi_models(data=data)
     # test_single_agent_with_non_parametric_model(model="Duffy", data=data, idx=0)
-    # test_single_agent_with_parametric_model(model="Frequentist", data=data, idx=0)
+    test_single_agent_with_parametric_model(model="Frequentist", data=data, idx=0)
 
 
 if __name__ == "__main__":
