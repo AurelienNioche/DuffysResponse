@@ -37,6 +37,24 @@ class Analyst(object):
 
         return msg
 
+    def compute_correlation_between_fit_and_speculation(self):
+        msg = ""
+        for model in self.models:
+
+            fit = []
+            for i in range(self.n):
+
+                fit.append(self.op_results[model][i]["squares_sum"])
+
+            r, p_value = self.compute_correlation(
+                fit,
+                self.speculation_ratio
+            )
+            msg += "[{}] Correlation between minimal square error and speculation: {:.2f} [p={:.3f}]"\
+                .format(model, r, p_value)
+            msg += "\n"
+        return msg
+
     def get_best_parameter_for_every_agent(self, model, parameter):
 
         return np.asarray([self.op_results[model][i]["best"][parameter] for i in range(self.n)])
@@ -110,6 +128,8 @@ def main():
             "acceptance_memory_span",
             "temp"
         )))
+
+    print(a.compute_correlation_between_fit_and_speculation())
 
 if __name__ == "__main__":
 

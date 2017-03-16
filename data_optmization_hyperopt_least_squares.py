@@ -551,7 +551,7 @@ class ModelComparison(object):
 
         np.save("../optimization.npy", results)
 
-        with open("../summary.txt") as file:
+        with open("../summary.txt", "w") as file:
             file.write(summary)
 
         with open('../optimization_individual.csv', 'w', newline='') as csvfile:
@@ -636,7 +636,10 @@ def main():
     data = import_data()
     # comparison_multi_models(data=data)
     # test_single_agent_with_non_parametric_model(model="Duffy", data=data, idx=0)
-    test_single_agent_with_parametric_model(model="Frequentist", data=data, idx=0)
+    # test_single_agent_with_parametric_model(model="Frequentist", data=data, idx=0)
+    comparison_multi_models(data=data,
+                            model_to_test=("RL2Steps", "Frequentist", "KW", "Duffy", "TotalGogol",
+                                           "StupidAgent", "StrategicRL", "ForwardRL"))
 
 
 if __name__ == "__main__":

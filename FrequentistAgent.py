@@ -47,6 +47,8 @@ class FrequentistAgent(StupidAgent):
                 self.agent_parameters["acceptance_probabilities"]
             )
 
+        self.u, self.storing_costs = 1, self.storing_costs/self.u
+
     @staticmethod
     def get_acceptance_dic(n_goods):
 
@@ -113,6 +115,7 @@ class FrequentistAgent(StupidAgent):
         probability_direct_exchange = \
             self.probabilities["acceptance"][(self.P, self.C)] * self.probabilities["encounter"][self.C]
 
+        # DEBUG ONLY
         if self.idx == IDX_FOR_DEBUG and DEBUG: print("p direct exchange", probability_direct_exchange)
 
         if probability_direct_exchange > 0:
@@ -128,6 +131,7 @@ class FrequentistAgent(StupidAgent):
         probability_indirect_exchange = \
             self.probabilities["acceptance"][(partner_good, self.C)] * self.probabilities["encounter"][self.C]
 
+        # DEBUG ONLY
         if self.idx == IDX_FOR_DEBUG and DEBUG: print("p indirect exchange", probability_indirect_exchange)
 
         if probability_indirect_exchange > 0:
@@ -181,7 +185,7 @@ class FrequentistAgent(StupidAgent):
         if self.idx == IDX_FOR_DEBUG and DEBUG:
             print("ACCEPT", self.accept)
 
-        if self.accept:
+        if self.accept and self.in_hand_partner_good_pair in self.memory["acceptance"]:
 
             successful = int(self.H != self.in_hand_partner_good_pair[0])
             if self.idx == IDX_FOR_DEBUG and DEBUG: print("Success", successful)

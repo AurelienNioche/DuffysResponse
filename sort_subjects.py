@@ -121,9 +121,9 @@ def main():
     sp_ratio_list = compute_speculation_ratio(data=data)
     cons_ratio_list = compute_consumption_ratio(data=data)
     pure_cons_list = compute_pure_consumption_ratio(data=data)
-    # do_some_stats(sp_ratio_list, "Speculation")
-    # do_some_stats(cons_ratio_list, "Consumption")
-    # do_some_stats(pure_cons_list, "PureConsumption")
+    do_some_stats(sp_ratio_list, "Speculation")
+    do_some_stats(cons_ratio_list, "Consumption")
+    do_some_stats(pure_cons_list, "PureConsumption")
 
     do_some_correlation_analysis(sp_ratio_list, cons_ratio_list,
                                  label="Correlation between accepting to speculate and accepting to consume")
