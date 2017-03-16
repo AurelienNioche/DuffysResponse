@@ -157,7 +157,7 @@ class ForwardRLAgent(StupidAgent):
 
 def main():
 
-    storing_costs = np.array([0.01, 0.04, 0.09])  # 5
+    storing_costs = np.array([0.1, 0.30, 0.31])  # 5
     u = 1
 
     parameters = {

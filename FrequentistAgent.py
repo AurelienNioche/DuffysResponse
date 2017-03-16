@@ -7,7 +7,7 @@ import itertools as it
 from compute_equilibrium import compute_equilibrium
 
 
-DEBUG = 1
+DEBUG = 0
 IDX_FOR_DEBUG = 0
 
 
@@ -220,7 +220,7 @@ class FrequentistAgent(StupidAgent):
 
 def main():
 
-    storing_costs = [0.01, 0.04, 0.09]
+    storing_costs = [0.1, 0.20, 0.22]
     u = 1
     beta = 0.9
 

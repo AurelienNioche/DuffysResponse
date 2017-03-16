@@ -1,4 +1,4 @@
 {
-  "random_evaluations": 500,
-  "max_evaluations": 1000
+  "random_evaluations": 20,
+  "max_evaluations": 100
 }

@@ -8,3 +8,9 @@ def compute_equilibrium(storing_costs, beta, u):
 
     else:
         return "no equilibrium"
+
+
+if __name__ == "__main__":
+
+    eq = compute_equilibrium([0.1, 0.3, 0.31], beta=0.9, u=1)
+    print(eq)
