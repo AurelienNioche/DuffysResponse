@@ -157,11 +157,11 @@ class ForwardRLAgent(StupidAgent):
 
 def main():
 
-    storing_costs = np.array([0.1, 0.30, 0.31])  # 5
+    storing_costs = np.array([0.1, 0.24, 0.32])  # 5
     u = 1
 
     parameters = {
-        "t_max": 500,
+        "t_max": 3000 ,
         "agent_parameters": {"alpha": 0.2, "temp": 0.01, "gamma": 0.2,
                              "q_values": np.ones((12, 2))},
         "repartition_of_roles": np.array([500, 500, 500]),
