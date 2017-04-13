@@ -1,11 +1,11 @@
-import numpy as np
-from module.useful_functions import softmax
-from stupid_agent import StupidAgent
-from Economy import Economy
-from graph import represent_results
 import itertools as it
-from compute_equilibrium import compute_equilibrium
+import numpy as np
 
+from cmodule.useful_functions import softmax
+from agent.stupid_agent import StupidAgent
+from environment.Economy import Economy
+from environment.compute_equilibrium import compute_equilibrium
+from graph.graph import represent_results
 
 DEBUG = 0
 IDX_FOR_DEBUG = 0
@@ -235,7 +235,7 @@ def main():
     }
 
     parameters = {
-        "t_max": 1000,
+        "t_max": 500,
         "agent_parameters": agent_parameters,
         "repartition_of_roles": np.array([50, 50, 50]),
         "storing_costs": storing_costs,

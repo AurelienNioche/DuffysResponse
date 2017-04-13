@@ -1,8 +1,9 @@
-import numpy as np
-from scipy.stats.stats import pearsonr
-import seaborn as sns
 from os import path
-from data_manager import import_data
+import numpy as np
+import seaborn as sns
+from scipy.stats.stats import pearsonr
+
+from data_analysis.data_manager import import_data
 
 
 def compute_speculation_ratio(data, verbose=False):

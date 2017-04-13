@@ -1,7 +1,8 @@
 import numpy as np
-from stupid_agent import StupidAgent
-from Economy import launch
-from graph import represent_results
+
+from agent.stupid_agent import StupidAgent
+from environment.Economy import launch
+from graph.graph import represent_results
 
 
 class KwAgent(StupidAgent):

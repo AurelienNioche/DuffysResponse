@@ -1,9 +1,10 @@
 import numpy as np
-from stupid_agent import StupidAgent
-from module.useful_functions import softmax
-from Economy import launch
-from graph import represent_results
-from get_roles import get_roles
+
+from cmodule.useful_functions import softmax
+from agent.stupid_agent import StupidAgent
+from environment.Economy import launch
+from environment.get_roles import get_roles
+from graph.graph import represent_results
 
 '''
 RL with reinforcement of strategies understood as Game Theory does
@@ -163,7 +164,7 @@ class StrategicRLAgent(StupidAgent):
         self.consume()  # Include learning in this model
 
 
-def test_agent():
+def run_agent_for_testing():
 
     a = StrategicRLAgent(
         prod=1,
@@ -183,12 +184,14 @@ def test_agent():
 
 def main():
 
+    storing_costs = [0.1, 0.20, 0.22]   # [0.01, 0.03, 0.09]
+
     parameters = {
         "t_max": 500,
         "agent_parameters": {"alpha": 0.2, "temp": 0.01,
                              "strategy_values": np.ones(4)},
         "repartition_of_roles": [500, 500, 500],
-        "storing_costs": [0.01, 0.03, 0.09],
+        "storing_costs": storing_costs,
         "u": 1,
         "agent_model": StrategicRLAgent
     }

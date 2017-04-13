@@ -1,8 +1,11 @@
-import numpy as np
 from itertools import product
-from graph import represent_results
-from Economy import Economy
-from stupid_agent import StupidAgent
+
+import numpy as np
+
+from agent.stupid_agent import StupidAgent
+from environment.Economy import Economy
+from graph.graph import represent_results
+
 
 # --------------------------------------------------------------------------------------------------- #
 # -------------------------------- MARIMON AGENT ---------------------------------------------------- #

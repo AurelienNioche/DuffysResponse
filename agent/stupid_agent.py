@@ -1,6 +1,7 @@
 import numpy as np
-from Economy import launch
-from graph import represent_results
+
+from environment.Economy import launch
+from graph.graph import represent_results
 
 
 class StupidAgent(object):
@@ -39,7 +40,7 @@ class StupidAgent(object):
         # Object an agent has in hand
         self.H = self.P
 
-    def are_you_satisfied(self, partner_good, partner_type, proportions):
+    def are_you_satisfied(self, partner_good, partner_type, proportions=None):
 
         if partner_good == self.C:
             return True

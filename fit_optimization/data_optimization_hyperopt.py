@@ -1,15 +1,17 @@
-import numpy as np
-import hyperopt as op
 import csv
-from tqdm import tqdm
-from multiprocessing.pool import ThreadPool
 from multiprocessing import cpu_count
-from data_manager import import_data
-from RLForward import RLForwardAgent
+from multiprocessing.pool import ThreadPool
+
+import hyperopt as op
+import numpy as np
 from RL import RLAgent as RLStrategicAgent
-from stupidy_is_better import TotalGogol, StupidAgent
-from DuffyAgent import DuffyAgent
-from KwAgent import KwAgent
+from RLForward import RLForwardAgent
+from tqdm import tqdm
+
+from agent.DuffyAgent import DuffyAgent
+from agent.KwAgent import KwAgent
+from agent.stupidy_is_better import TotalGogol, StupidAgent
+from data_analysis.data_manager import import_data
 
 
 class PerformanceComputer(object):

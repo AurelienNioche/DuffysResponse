@@ -1,4 +1,4 @@
-from stupid_agent import StupidAgent
+from agent.stupid_agent import StupidAgent
 
 
 class TotalGogol(StupidAgent):

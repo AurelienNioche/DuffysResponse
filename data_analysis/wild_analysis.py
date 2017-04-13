@@ -1,10 +1,7 @@
-import numpy as np
-from scipy.stats import f_oneway
 import pandas as pd
 from statsmodels.formula.api import ols
-from scipy.stats.stats import pearsonr
-from data_manager import import_data
-from sort_subjects import *
+
+from data_analysis.sort_subjects import *
 
 
 class Analyst(object):

@@ -1,9 +1,9 @@
 import numpy as np
-from Economy import Economy
-from graph import represent_results
-from stupid_agent import StupidAgent
-from module.useful_functions import softmax
-from save import save
+
+from cmodule.useful_functions import softmax
+from agent.stupid_agent import StupidAgent
+from environment.Economy import Economy
+from graph.graph import represent_results
 
 
 class RL2StepsAgent(StupidAgent):

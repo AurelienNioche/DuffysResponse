@@ -1,20 +1,22 @@
-import numpy as np
-import hyperopt as op
 import csv
-from tqdm import tqdm
-import json
 import itertools as it
-from multiprocessing.pool import ThreadPool
+import json
 from multiprocessing import cpu_count
-from data_manager import import_data
-from ForwardRL import ForwardRLAgent
-from RL2Steps import RL2StepsAgent
-from StrategicRL import StrategicRLAgent
-from stupidy_is_better import TotalGogol
-from stupid_agent import StupidAgent
-from DuffyAgent import DuffyAgent
-from KwAgent import KwAgent
-from FrequentistAgent import FrequentistAgent
+from multiprocessing.pool import ThreadPool
+
+import hyperopt as op
+import numpy as np
+from tqdm import tqdm
+
+from agent.DuffyAgent import DuffyAgent
+from agent.ForwardRL import ForwardRLAgent
+from agent.FrequentistAgent import FrequentistAgent
+from agent.KwAgent import KwAgent
+from agent.RL2Steps import RL2StepsAgent
+from agent.StrategicRL import StrategicRLAgent
+from agent.stupid_agent import StupidAgent
+from agent.stupidy_is_better import TotalGogol
+from data_analysis.data_manager import import_data
 
 
 class PerformanceComputer(object):

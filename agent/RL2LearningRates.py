@@ -1,10 +1,10 @@
 import numpy as np
-from KWModels import ModelA
-from Economy import launch
-from analysis import represent_results
-from AbstractAgent import Agent
-from module.useful_functions import softmax
+from agent.stupid_agent import StupidAgent
+from graph.graph import represent_results
+from cmodule.useful_functions import softmax
+from environment.get_roles import get_roles
 
+from environment.Economy import launch
 
 '''
 Same as 'RL' but with different learning rates for positive and negative outcomes.
@@ -13,8 +13,10 @@ RL with reinforcement of strategies understood as Game Theory does
 '''
 
 
-class RL2Agent(Agent):
+class RL2Agent(StupidAgent):
+    
     name = "RL2"
+    n_goods = 3
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -56,29 +58,31 @@ class RL2Agent(Agent):
         self.followed_strategy = None
 
         self.utility = None
+        
+        roles = get_roles(self.n_goods)
 
         absolute_to_relative_3_types = np.array([
             [
-                np.where(self.kw_model.roles[0] == 0)[0][0],
-                np.where(self.kw_model.roles[0] == 1)[0][0],
-                np.where(self.kw_model.roles[0] == 2)[0][0]
+                np.where(roles[0] == 0)[0][0],
+                np.where(roles[0] == 1)[0][0],
+                np.where(roles[0] == 2)[0][0]
             ],
             [
-                np.where(self.kw_model.roles[1] == 0)[0][0],
-                np.where(self.kw_model.roles[1] == 1)[0][0],
-                np.where(self.kw_model.roles[1] == 2)[0][0]
+                np.where(roles[1] == 0)[0][0],
+                np.where(roles[1] == 1)[0][0],
+                np.where(roles[1] == 2)[0][0]
             ],
             [
-                np.where(self.kw_model.roles[2] == 0)[0][0],
-                np.where(self.kw_model.roles[2] == 1)[0][0],
-                np.where(self.kw_model.roles[2] == 2)[0][0]
+                np.where(roles[2] == 0)[0][0],
+                np.where(roles[2] == 1)[0][0],
+                np.where(roles[2] == 2)[0][0]
             ]
         ], dtype=int)
 
         # Take object with absolute reference to give object relating to agent
         #    (with 0: production good, 1: consumption good, 2: third object)
 
-        self.absolute_to_relative = absolute_to_relative_3_types[self.type]
+        self.absolute_to_relative = absolute_to_relative_3_types[self.C]
 
         # ----- RL2 PARAMETERS ---- #
 
@@ -137,7 +141,6 @@ def main():
         "agent_parameters": {"alpha_plus": 0.4, "alpha_minus": 0.05, "temp": 0.01},
         "role_repartition": np.array([500, 500, 500]),
         "storing_costs": np.array([0.1, 0.25, 0.4]),
-        "kw_model": ModelA,
         "agent_model": RL2Agent,
     }
 
