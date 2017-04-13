@@ -1,10 +1,13 @@
 import numpy as np
-from hyperopt import fmin, tpe, hp, partial, STATUS_FAIL, STATUS_OK
+import itertools as it
+import pickle
+from os import path
+from datetime import datetime
+from tqdm import tqdm
 
 from environment.Economy import EconomyWithoutBackUp
 from environment.compute_equilibrium import compute_equilibrium
 from agent.FrequentistAgent import FrequentistAgent
-
 
 
 class EconomyForOptimizing(EconomyWithoutBackUp):
@@ -23,9 +26,6 @@ class EconomyForOptimizing(EconomyWithoutBackUp):
         self.t = 0
 
     def run(self):
-        if not self.storing_costs[0] < self.storing_costs[1] < self.storing_costs[2] \
-                or compute_equilibrium(self.storing_costs, self.beta, self.u) != "speculative":
-            return {'loss': None, 'status': STATUS_FAIL}
 
         self.agents = self.create_agents()
 
@@ -33,7 +33,7 @@ class EconomyForOptimizing(EconomyWithoutBackUp):
             self.t = t
             self.time_step()
 
-        return {"loss": self.function_to_minimize(), "status": STATUS_OK}
+        return self.give_feed_back()
 
     def time_step(self):
 
@@ -48,14 +48,16 @@ class EconomyForOptimizing(EconomyWithoutBackUp):
 
         self.make_a_backup_for_t()
 
-    def function_to_minimize(self):
+    def give_feed_back(self):
 
-        print("{:.2f}, {:.2f}, {:.2f}: {:.2f}".format(
-            self.storing_costs[0], self.storing_costs[1], self.storing_costs[2],
-            np.mean(self.good_accepted_as_medium_average[-200:, 2])))
+        to_return = np.array([
+            np.mean(self.good_accepted_as_medium_average[-200:, 0]),
+            np.mean(self.good_accepted_as_medium_average[-200:, 1]),
+            np.mean(self.good_accepted_as_medium_average[-200:, 2]),
+            self.storing_costs[2] - self.storing_costs[1]
+        ])
 
-        return (1 - np.mean(self.good_accepted_as_medium_average[-200:, 2])) / \
-               (self.storing_costs[2] - self.storing_costs[1])
+        return to_return
 
     def make_encounter(self, i, j):
 
@@ -111,14 +113,13 @@ class EconomyForOptimizing(EconomyWithoutBackUp):
         self.good_accepted_as_medium_average[self.t][:] = self.good_accepted_as_medium_at_t
 
 
-def fun_3_goods(args):
+def fun_3_goods(storing_costs):
 
     t_max = 500
-
-    storing_costs = [args[0], args[1], args[2]]
     u = 1
     beta = 0.9
     repartition_of_roles = np.array([50, 50, 50])
+    storing_costs = np.asarray(storing_costs) / 100
 
     agent_parameters = {
         "acceptance_memory_span": 1000,
@@ -141,28 +142,52 @@ def fun_3_goods(args):
     return e.run()
 
 
+def timestamp():
+
+    return datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
+
+
 def optimize_3_goods():
 
-    random_evaluations = 20
-    max_eval = 100
+    data_file_name = path.expanduser("~/Desktop/exp_parameters_optimization_by_hand_data.p")
+    comb_file_name = path.expanduser("~/Desktop/exp_parameters_optimization_by_hand_comb.p")
 
-    space = [
-        hp.uniform('c1', 0., 1.),
-        hp.uniform('c2', 0., 1.),
-        hp.uniform('c3', 0., 1.)
-    ]
+    if path.exists(data_file_name):
+        with open(data_file_name, 'rb') as f:
+            data = pickle.load(f)
+    else:
+        data = {}
 
-    alg = partial(
-        tpe.suggest,  # bayesian optimization # tpe.rand, #random optimization
-        n_startup_jobs=random_evaluations)
+    if path.exists(comb_file_name):
+        with open(comb_file_name, 'rb') as f:
+            comb = pickle.load(f)
+    else:
+        comb = list(it.combinations(np.arange(1, 101), r=3))
 
-    best = fmin(
-        fn=fun_3_goods,
-        space=space,
-        algo=alg,
-        max_evals=max_eval
-    )
-    print("Best repartition found: {}, {}, {}".format(best["c1"], best["c2"], best["c3"]))
+    initial_len_comb = len(comb)
+
+    try:
+        for i in tqdm(range(initial_len_comb)):
+            rand = np.random.randint(len(comb))
+            c = comb[rand]
+
+            if compute_equilibrium([c[0]/100, c[1]/100, c[2]/100], 0.9, 1) != "speculative":
+
+                data[c] = fun_3_goods(c)
+
+            else:
+                data[c] = "non-speculative"
+
+            print("{}: {}".format(c, data[c]))
+            print()
+            comb.remove(c)
+
+    except KeyboardInterrupt:
+        with open(data_file_name, "wb") as file:
+            pickle.dump(data, file=file)
+
+        with open(comb_file_name, "wb") as file:
+            pickle.dump(comb, file=file)
 
 
 if __name__ == "__main__":
