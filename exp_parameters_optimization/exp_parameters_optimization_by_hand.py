@@ -186,6 +186,8 @@ class Optimizer(object):
         self.data, self.comb = self.load()
         self.processes, self.processes_queues = self.create_processes()
 
+        self.current_comb = []
+
     def load(self):
 
         if path.exists(self.data_file_name):
@@ -225,7 +227,10 @@ class Optimizer(object):
                 self.processes[i].start()
 
                 num = np.random.randint(len(self.comb))
-                self.processes_queues[i].put(self.comb[num])
+                new_comb = self.comb[num]
+
+                self.current_comb.append(new_comb)
+                self.processes_queues[i].put(new_comb)
 
             else:
                 self.shutdown.set()
@@ -242,18 +247,14 @@ class Optimizer(object):
             process_name, process_comb, process_result = self.queue.get()
             self.data[process_comb] = process_result
 
-            if not self.shutdown.is_set() and len(self.comb) > 1:
-                if type(process_result) is not str and process_result[2] > 0.01:
+            if not self.shutdown.is_set() and len(self.comb) > len(self.current_comb):
 
-                    num = self.comb.index(process_comb)
-
-                    if num == len(self.comb) - 1:
-                        num -= 1
-                else:
-                    num = np.random.randint(len(self.comb)-1)
+                new_comb = self.find_new_comb(process_comb=process_comb, process_result=process_result)
 
                 self.comb.remove(process_comb)
-                new_comb = self.comb[num]
+                self.current_comb.remove(process_comb)
+                self.current_comb.append(new_comb)
+
                 self.processes_queues[process_name].put(new_comb)
 
             else:
@@ -265,13 +266,46 @@ class Optimizer(object):
                 break
         self.finish()
 
+    def find_new_comb(self, process_result, process_comb):
+
+        if type(process_result) is not str and process_result[2] > 0.01:
+
+            new_comb = self.select_approaching_comb(process_comb)
+        else:
+            new_comb = self.select_random_comb()
+
+        return new_comb
+
+    def select_random_comb(self):
+
+        num = np.random.randint(len(self.comb))
+        while self.comb[num] in self.current_comb:
+            num = np.random.randint(len(self.comb))
+
+        return self.comb[num]
+
+    def select_approaching_comb(self, process_comb):
+
+        actual_num = self.comb.index(process_comb)
+
+        num = actual_num - 1
+        while self.comb[num] in self.current_comb:
+            num -= 1
+            if num < 0:
+                num = self.select_random_comb()
+
+        return self.comb[num]
+
     def finish(self):
+
+        print("Saving...")
 
         with open(self.data_file_name, "wb") as file:
             pickle.dump(self.data, file=file)
 
         with open(self.comb_file_name, "wb") as file:
             pickle.dump(self.comb, file=file)
+        print("Done!")
 
 
 def optimize_3_goods():
@@ -281,7 +315,7 @@ def optimize_3_goods():
     try:
         op.run()
 
-    except KeyboardInterrupt:
+    except Exception:
         op.shutdown.set()
         op.finish()
 
