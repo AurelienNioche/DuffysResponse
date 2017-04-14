@@ -9,6 +9,8 @@ from environment.Economy import EconomyWithoutBackUp
 from environment.compute_equilibrium import compute_equilibrium
 from agent.FrequentistAgent import FrequentistAgent
 
+from multiprocessing import Process, Queue, Event, cpu_count
+
 
 class EconomyForOptimizing(EconomyWithoutBackUp):
 
@@ -113,33 +115,56 @@ class EconomyForOptimizing(EconomyWithoutBackUp):
         self.good_accepted_as_medium_average[self.t][:] = self.good_accepted_as_medium_at_t
 
 
-def fun_3_goods(storing_costs):
+class Computer(Process):
 
-    t_max = 500
-    u = 1
-    beta = 0.9
-    repartition_of_roles = np.array([50, 50, 50])
-    storing_costs = np.asarray(storing_costs) / 100
+    def __init__(self, int_name, input_queue, output_queue, shutdown):
 
-    agent_parameters = {
-        "acceptance_memory_span": 1000,
-        "encounter_memory_span": 1000,
-        "temp": 0.1,
-    }
+        super().__init__()
+        self.int_name = int_name
+        self.input_queue = input_queue
+        self.output_queue = output_queue
+        self.shutdown = shutdown
 
-    parameters = {
-        "t_max": t_max,
-        "agent_parameters": agent_parameters,
-        "repartition_of_roles": repartition_of_roles,
-        "storing_costs": storing_costs,
-        "u": u,
-        "beta": beta,
-        "agent_model": FrequentistAgent
-    }
+    def run(self):
 
-    e = EconomyForOptimizing(**parameters)
+        while not self.shutdown.is_set():
 
-    return e.run()
+            raw_storing_costs = self.input_queue.get()
+            storing_costs = np.asarray(raw_storing_costs) / 100
+            if compute_equilibrium(storing_costs, 0.9, 1) == "speculative":
+                res = self.fun_3_goods(storing_costs)
+            else:
+                res = "non-speculative"
+            self.output_queue.put((self.int_name, raw_storing_costs, res))
+
+    @staticmethod
+    def fun_3_goods(storing_costs):
+
+        t_max = 500
+        u = 1
+        beta = 0.9
+        repartition_of_roles = np.array([50, 50, 50])
+        storing_costs = np.asarray(storing_costs) / 100
+
+        agent_parameters = {
+            "acceptance_memory_span": 1000,
+            "encounter_memory_span": 1000,
+            "temp": 0.1,
+        }
+
+        parameters = {
+            "t_max": t_max,
+            "agent_parameters": agent_parameters,
+            "repartition_of_roles": repartition_of_roles,
+            "storing_costs": storing_costs,
+            "u": u,
+            "beta": beta,
+            "agent_model": FrequentistAgent
+        }
+
+        e = EconomyForOptimizing(**parameters)
+
+        return e.run()
 
 
 def timestamp():
@@ -147,47 +172,118 @@ def timestamp():
     return datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
 
 
-def optimize_3_goods():
+class Optimizer(object):
 
-    data_file_name = path.expanduser("~/Desktop/exp_parameters_optimization_by_hand_data.p")
-    comb_file_name = path.expanduser("~/Desktop/exp_parameters_optimization_by_hand_comb.p")
+    data_file_name = path.expanduser(
+        "~/Desktop/exp_parameters_optimization_by_hand_data.p")
+    comb_file_name = path.expanduser(
+        "~/Desktop/exp_parameters_optimization_by_hand_comb.p")
 
-    if path.exists(data_file_name):
-        with open(data_file_name, 'rb') as f:
-            data = pickle.load(f)
-    else:
-        data = {}
+    def __init__(self):
 
-    if path.exists(comb_file_name):
-        with open(comb_file_name, 'rb') as f:
-            comb = pickle.load(f)
-    else:
-        comb = list(it.combinations(np.arange(1, 101), r=3))
+        self.shutdown = Event()
+        self.queue = Queue()
+        self.data, self.comb = self.load()
+        self.processes, self.processes_queues = self.create_processes()
 
-    initial_len_comb = len(comb)
+    def load(self):
 
-    try:
-        for i in tqdm(range(initial_len_comb)):
-            rand = np.random.randint(len(comb))
-            c = comb[rand]
+        if path.exists(self.data_file_name):
+            with open(self.data_file_name, 'rb') as f:
+                data = pickle.load(f)
+        else:
+            data = {}
 
-            if compute_equilibrium([c[0]/100, c[1]/100, c[2]/100], 0.9, 1) != "speculative":
+        if path.exists(self.comb_file_name):
+            with open(self.comb_file_name, 'rb') as f:
+                comb = pickle.load(f)
+        else:
+            comb = list(it.combinations(np.arange(1, 101), r=3))
 
-                data[c] = fun_3_goods(c)
+        return data, comb
+
+    def create_processes(self):
+
+        processes = []
+        queues = []
+        for i in range(cpu_count()):
+
+            queue = Queue()
+            process = Computer(input_queue=queue, output_queue=self.queue, int_name=i, shutdown=self.shutdown)
+
+            processes.append(process)
+            queues.append(queue)
+
+        return processes, queues
+
+    def start_processes(self):
+
+        for i in range(cpu_count()):
+
+            if len(self.comb):
+
+                self.processes[i].start()
+
+                num = np.random.randint(len(self.comb))
+                self.processes_queues[i].put(self.comb[num])
 
             else:
-                data[c] = "non-speculative"
+                self.shutdown.set()
+                break
 
-            print("{}: {}".format(c, data[c]))
-            print()
-            comb.remove(c)
+    def run(self):
+
+        p_bar = tqdm(total=len(self.comb))
+
+        self.start_processes()
+
+        while not self.shutdown.is_set():
+
+            process_name, process_comb, process_result = self.queue.get()
+            self.data[process_comb] = process_result
+
+            if not self.shutdown.is_set() and len(self.comb) > 1:
+                if type(process_result) is not str and process_result[2] > 0.01:
+
+                    num = self.comb.index(process_comb)
+
+                    if num == len(self.comb) - 1:
+                        num -= 1
+                else:
+                    num = np.random.randint(len(self.comb)-1)
+
+                self.comb.remove(process_comb)
+                new_comb = self.comb[num]
+                self.processes_queues[process_name].put(new_comb)
+
+            else:
+                self.comb.remove(process_comb)
+
+            p_bar.update(1)
+
+            if not len(self.comb):
+                break
+        self.finish()
+
+    def finish(self):
+
+        with open(self.data_file_name, "wb") as file:
+            pickle.dump(self.data, file=file)
+
+        with open(self.comb_file_name, "wb") as file:
+            pickle.dump(self.comb, file=file)
+
+
+def optimize_3_goods():
+
+    op = Optimizer()
+
+    try:
+        op.run()
 
     except KeyboardInterrupt:
-        with open(data_file_name, "wb") as file:
-            pickle.dump(data, file=file)
-
-        with open(comb_file_name, "wb") as file:
-            pickle.dump(comb, file=file)
+        op.shutdown.set()
+        op.finish()
 
 
 if __name__ == "__main__":
