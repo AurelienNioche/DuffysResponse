@@ -179,6 +179,8 @@ class Optimizer(object):
     comb_file_name = path.expanduser(
         "~/Desktop/exp_parameters_optimization_by_hand_comb.p")
 
+    n_processes = cpu_count() * 2
+
     def __init__(self):
 
         self.shutdown = Event()
@@ -208,7 +210,7 @@ class Optimizer(object):
 
         processes = []
         queues = []
-        for i in range(cpu_count()):
+        for i in range(self.n_processes):
 
             queue = Queue()
             process = Computer(input_queue=queue, output_queue=self.queue, int_name=i, shutdown=self.shutdown)
@@ -220,7 +222,7 @@ class Optimizer(object):
 
     def start_processes(self):
 
-        for i in range(cpu_count()):
+        for i in range(self.n_processes):
 
             if len(self.comb):
 
@@ -315,7 +317,7 @@ def optimize_3_goods():
     try:
         op.run()
 
-    except Exception:
+    except (Exception, KeyboardInterrupt):
         op.shutdown.set()
         op.finish()
 
