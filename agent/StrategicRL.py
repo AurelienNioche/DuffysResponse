@@ -164,7 +164,7 @@ class StrategicRLAgent(StupidAgent):
         self.consume()  # Include learning in this model
 
 
-def run_agent_for_testing():
+def run_single_agent():
 
     a = StrategicRLAgent(
         prod=1,
@@ -184,7 +184,7 @@ def run_agent_for_testing():
 
 def main():
 
-    storing_costs = [0.1, 0.20, 0.22]   # [0.01, 0.03, 0.09]
+    storing_costs = [0.10, 0.20, 0.24]   # [0.01, 0.03, 0.09]
 
     parameters = {
         "t_max": 500,

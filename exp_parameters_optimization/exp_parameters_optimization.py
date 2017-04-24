@@ -6,7 +6,6 @@ from environment.compute_equilibrium import compute_equilibrium
 from agent.FrequentistAgent import FrequentistAgent
 
 
-
 class EconomyForOptimizing(EconomyWithoutBackUp):
 
     """ Economy class for optimizing parameters"""

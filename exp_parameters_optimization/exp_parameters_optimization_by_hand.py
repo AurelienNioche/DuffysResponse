@@ -56,9 +56,9 @@ class EconomyForOptimizing(EconomyWithoutBackUp):
             np.mean(self.good_accepted_as_medium_average[-200:, 0]),
             np.mean(self.good_accepted_as_medium_average[-200:, 1]),
             np.mean(self.good_accepted_as_medium_average[-200:, 2]),
-            self.storing_costs[2] - self.storing_costs[1]
+            int(self.storing_costs[2] * 100) - int(self.storing_costs[1] * 100)
         ])
-
+        # print("st", self.storing_costs, "ret", to_return)
         return to_return
 
     def make_encounter(self, i, j):
@@ -79,8 +79,8 @@ class EconomyForOptimizing(EconomyWithoutBackUp):
         i_C, j_C = self.agents[i].C, self.agents[j].C
 
         # Consider particular case of offering third object
-        i_facing_M = j_H != i_C and i_H == i_P
-        j_facing_M = i_H != j_C and j_H == j_P
+        i_facing_M = j_H not in [i_P, i_C] and i_H == i_P
+        j_facing_M = i_H not in [j_P, j_C] and j_H == j_P
 
         if i_facing_M:
             self.proposition_of_medium_at_t[j_H] += 1  # Consider as key the good that is proposed as a medium of ex
@@ -144,7 +144,9 @@ class Computer(Process):
         u = 1
         beta = 0.9
         repartition_of_roles = np.array([50, 50, 50])
-        storing_costs = np.asarray(storing_costs) / 100
+        storing_costs = np.asarray(storing_costs, dtype=float)
+
+        # assert len(storing_costs) == 3 and all([0 < i <= 100 for i in storing_costs])
 
         agent_parameters = {
             "acceptance_memory_span": 1000,
@@ -179,7 +181,7 @@ class Optimizer(object):
     comb_file_name = path.expanduser(
         "~/Desktop/exp_parameters_optimization_by_hand_comb.p")
 
-    n_processes = cpu_count() * 2
+    n_processes = cpu_count() * 4
 
     def __init__(self):
 
@@ -202,7 +204,7 @@ class Optimizer(object):
             with open(self.comb_file_name, 'rb') as f:
                 comb = pickle.load(f)
         else:
-            comb = list(it.combinations(np.arange(1, 101), r=3))
+            comb = list(it.combinations(np.arange(2, 52, 2), r=3))
 
         return data, comb
 

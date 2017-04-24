@@ -224,7 +224,7 @@ class FrequentistAgent(StupidAgent):
 
 def main():
 
-    storing_costs =  0.4174360064484973, 0.4576654976718968, 0.5507481212540988 # [0.1, 0.20, 0.22]
+    storing_costs = 0.01, 0.04, 0.09  # [0.1, 0.20, 0.24]
     u = 1
     beta = 0.9
 

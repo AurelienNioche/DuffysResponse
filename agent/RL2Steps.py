@@ -151,12 +151,12 @@ class RL2StepsAgent(StupidAgent):
 
 def main():
 
-    storing_costs = np.array([0.01, 0.04, 0.09]) * 5
+    storing_costs = 0.10, 0.20, 0.24
     u = 1
 
     parameters = {
         "t_max": 500,
-        "agent_parameters": {"alpha": 0.5, "temp": 0.1, "gamma": 0.5,
+        "agent_parameters": {"alpha": 0.1, "temp": 0.1, "gamma": 0.1,
                              "q_values": np.ones((6, 2))},
         "repartition_of_roles": np.array([50, 50, 50]),
         "storing_costs": storing_costs,
