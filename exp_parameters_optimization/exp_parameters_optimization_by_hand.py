@@ -58,7 +58,7 @@ class EconomyForOptimizing(EconomyWithoutBackUp):
             np.mean(self.good_accepted_as_medium_average[-200:, 2]),
             int(self.storing_costs[2] * 100) - int(self.storing_costs[1] * 100)
         ])
-        # print("st", self.storing_costs, "ret", to_return)
+        #  print("st", self.storing_costs, "ret", to_return)
         return to_return
 
     def make_encounter(self, i, j):

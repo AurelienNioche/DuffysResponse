@@ -1,0 +1,4 @@
+from exp_parameters_optimization.exp_parameters_optimization_by_hand import optimize_3_goods
+
+
+optimize_3_goods()
