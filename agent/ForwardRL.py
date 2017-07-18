@@ -160,7 +160,7 @@ def main():
     u = 1
 
     parameters = {
-        "t_max": 3000 ,
+        "t_max": 3000,
         "agent_parameters": {"alpha": 0.2, "temp": 0.01, "gamma": 0.2,
                              "q_values": np.ones((12, 2))},
         "repartition_of_roles": np.array([500, 500, 500]),

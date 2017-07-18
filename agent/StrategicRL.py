@@ -98,7 +98,7 @@ class StrategicRLAgent(StupidAgent):
 
     # ------------------------ SURCHARGED METHODS ------------------------------------------------------ #
 
-    def are_you_satisfied(self, partner_good, partner_type, proportions):
+    def are_you_satisfied(self, partner_good, partner_type, proportions=None):
 
         self.select_strategy()
         agreeing = self.strategies[self.followed_strategy, 
