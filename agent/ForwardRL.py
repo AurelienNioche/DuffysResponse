@@ -40,7 +40,7 @@ class ForwardRLAgent(StupidAgent):
 
     # ------------------------ SURCHARGED METHODS ------------------------------------------------------ #
 
-    def are_you_satisfied(self, partner_good, partner_type, proportions):
+    def are_you_satisfied(self, partner_good, partner_type, proportions=None):
 
         self.learn(partner_good, partner_type)
 
@@ -97,7 +97,8 @@ class ForwardRLAgent(StupidAgent):
             max(self.storing_costs) + self.u * self.consumption - self.storing_costs[self.H]
 
         # Be sure that utility lies between 0 and 1
-        assert 0 <= utility <= 1
+        assert 0.001 <= utility <= 1.001
+        utility = max(0, min(1, utility))
 
         return utility
 

@@ -75,7 +75,7 @@ class FrequentistAgent(StupidAgent):
             self.probabilities["encounter"][key] = initial_encounter_probabilities[i]
             self.probabilities["acceptance"][key] = initial_acceptance_probabilities[i]
 
-    def are_you_satisfied(self, partner_good, partner_type, proportions):
+    def are_you_satisfied(self, partner_good, partner_type, proportions=None):
 
         self.in_hand_partner_good_pair = self.H, partner_good
 
