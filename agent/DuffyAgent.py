@@ -40,7 +40,7 @@ class DuffyAgent(StupidAgent):
 
         return new_u, new_storing_costs
 
-    def are_you_satisfied(self, partner_good, partner_type, proportions):
+    def are_you_satisfied(self, partner_good, partner_type, proportions=None):
 
         self.H_at_the_beginning_of_the_round = self.H
 
