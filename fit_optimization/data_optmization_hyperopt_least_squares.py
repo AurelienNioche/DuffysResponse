@@ -640,8 +640,11 @@ def main():
     # test_single_agent_with_non_parametric_model(model="Duffy", data=data, idx=0)
     # test_single_agent_with_parametric_model(model="Frequentist", data=data, idx=0)
     comparison_multi_models(data=data,
-                            model_to_test=("RL2Steps", "Frequentist", "KW", "Duffy", "TotalGogol",
-                                           "StupidAgent", "StrategicRL", "ForwardRL"))
+                            model_to_test=(
+                                # "RL2Steps", "Frequentist", "KW", "Duffy", "TotalGogol",
+                                # "StupidAgent", "StrategicRL", "ForwardRL"
+                                "RL2Steps", "Duffy"
+    ))
 
 
 if __name__ == "__main__":

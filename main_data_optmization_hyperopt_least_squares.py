@@ -1,0 +1,3 @@
+from fit_optimization.data_optmization_hyperopt_least_squares import main
+
+main()
