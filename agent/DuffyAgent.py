@@ -13,7 +13,7 @@ class DuffyAgent(StupidAgent):
 
         super().__init__(**kwargs)
 
-        assert len(self.storing_costs) == 3, "Duffy Agent can not handle only 3 goods."
+        assert len(self.storing_costs) == 3, "Duffy Agent can handle only 3 goods."
 
         self.T = [i for i in range(3) if i != self.P and i != self.C][0]
 
@@ -30,6 +30,8 @@ class DuffyAgent(StupidAgent):
 
         self.H_at_the_beginning_of_the_round = self.P
 
+        self.have_to_learn = False
+
     @staticmethod
     def define_u_and_storing_costs(u, storing_costs):
 
@@ -43,6 +45,7 @@ class DuffyAgent(StupidAgent):
     def are_you_satisfied(self, partner_good, partner_type, proportions=None):
 
         self.H_at_the_beginning_of_the_round = self.H
+        self.have_to_learn = partner_good == self.C
 
         if partner_good == self.C:
             accept = 1
@@ -66,15 +69,15 @@ class DuffyAgent(StupidAgent):
 
     def learn(self):
 
-        if self.H_at_the_beginning_of_the_round == self.P:
+        if self.have_to_learn:
 
-            self.values[0] += self.consumption * self.gamma[0] - (1-self.consumption) * self.gamma[1]
+            if self.H_at_the_beginning_of_the_round == self.P:
+                self.values[0] += self.consumption * self.gamma[0] - (1-self.consumption) * self.gamma[1]
 
-        elif self.H_at_the_beginning_of_the_round == self.T:
+            else:  # elif self.H_at_the_beginning_of_the_round == self.T:
+                self.values[1] += self.consumption * self.gamma[1] - (1-self.consumption) * self.gamma[0]
 
-            self.values[1] += self.consumption * self.gamma[1] - (1-self.consumption) * self.gamma[0]
-
-            # ----------  FOR OPTIMIZATION PART ---------- #
+    # ----------  FOR OPTIMIZATION PART ---------- #
 
     def probability_of_responding(self, subject_response, partner_good, partner_type, proportions):
 
